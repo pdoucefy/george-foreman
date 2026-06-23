@@ -1,4 +1,0 @@
-- Choose model on agent creation
-- Workspace-specific workflows (.george-foreman folder?)
-- Theming? Multiple themes? (Grill/bbq, flames, futuristic orange, ...)
-- TDD workflows - make sure the changes made pass tests and builds, and they fully implement the feature requested and covers all documented and non documented edge cases
