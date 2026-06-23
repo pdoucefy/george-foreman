@@ -2879,10 +2879,3 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   or polyfill where needed (e.g. Windows tray badge via overlay icon, Linux notifications via
   `libnotify`). Would also require Windows/Linux CI runners and packaging targets in
   `electron-builder` config.
-
----
-
-_Document created: grilling session with pdoucet, June 2026._
-_Updated: second grilling session (11 patches) — permission API wire format, session.idle/error handling, persistent input model, Zustand state management, window.api bridge, font size scale, Node 22 built-ins, missing deps._
-_Updated: third grilling session (10 blocker patches) — SSE two-pipeline architecture, non-2xx retry fix, fs.promises.glob(), crypto.randomUUID(), navigate:settings IPC, repo:list-branches IPC, app.show() removed, TaskState✕ derived state, subagent permission filtering, session.idle ignored during needs_attention._
-_Based on HANDOFF.md (planning session) + grilling sessions (30 + 10 + 10 questions)._
