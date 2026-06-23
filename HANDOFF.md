@@ -344,6 +344,23 @@ Mark milestones as complete `[x]` as they are finished.
 
 ---
 
+## Coding Patterns (established in milestone 1)
+
+Follow these conventions consistently across all milestones:
+
+- **Pure functions for testability** — extract any logic that doesn't need Electron APIs into a separate module (e.g. `window.ts`, `tray-icon.ts`). Keep `index.ts` as thin wiring only.
+- **ESLint** - enforce code style and catch common mistakes
+- **Tests in `src/<area>/__tests__/`** — using Vitest; one test file per source module
+
+---
+
+## Known Gotchas
+
+- **ESLint v9 pinned** — `eslint-plugin-react@7` is incompatible with ESLint v10. We are pinned to ESLint v9 until `eslint-plugin-react@8` ships with flat config support.
+- **`pnpm approve-builds` duplicates keys** — never run `pnpm approve-builds` or `pnpm approve-builds --all`. It appends to `pnpm-workspace.yaml` without checking for existing keys, creating duplicate YAML keys that break `pnpm install`. To allow a new package's postinstall script, add it manually to the `allowBuilds` section in `pnpm-workspace.yaml`.
+
+---
+
 ## Suggested Skills
 
 - `tdd` — recommended for job-manager and opencode client modules
