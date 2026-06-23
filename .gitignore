@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+
+# pnpm
+pnpm-debug.log*
+
+# Electron packaging output (for future use)
+release/
+
+# testing
+coverage/
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+
+# env files
+.env*

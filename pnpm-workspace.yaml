@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: true
+  electron: true
+  simple-git-hooks: true
+  unrs-resolver: true

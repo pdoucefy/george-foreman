@@ -31,15 +31,16 @@ The repo exists at `~/workspace/george-foreman` and is a blank slate (only `HAND
 
 ## Tech Stack
 
-| Layer               | Choice                  |
-| ------------------- | ----------------------- |
-| App framework       | Electron                |
-| Frontend            | React + TypeScript      |
-| Styling             | styled-components       |
-| Main process        | Node.js (Electron main) |
-| Agent communication | OpenCode HTTP API + SSE |
-| Workflow format     | YAML                    |
-| Build tooling       | electron-vite           |
+| Layer                 | Choice                  |
+| --------------------- | ----------------------- |
+| App framework         | Electron                |
+| Frontend              | React + TypeScript      |
+| Styling               | styled-components       |
+| Main process          | Node.js (Electron main) |
+| Agent communication   | OpenCode HTTP API + SSE |
+| Workflow format       | YAML                    |
+| Build tooling         | electron-vite           |
+| App state persistence | electron-store          |
 
 ---
 
@@ -205,6 +206,30 @@ The app uses these to:
 - Update task progress indicators (X/Y, checkmarks)
 - Track subagent session IDs for drill-down (queries `GET /session/:id/message` on demand)
 
+> **Orchestrator prompt requirement:** The system prompt sent to the orchestrator session must explicitly instruct the model to emit each JSON block on its own line with no surrounding text on that line. This maximizes reliable parsing.
+
+---
+
+## Job State Persistence
+
+Task progress is persisted to disk using `electron-store` so that the SSE stream is not the sole source of truth. On every structured JSON event (`task_started`, `task_completed`, `subagent_spawned`), `job-manager.ts` writes the current task state to the store. On app startup or SSE reconnect, the persisted state is loaded first, then new SSE events are applied on top.
+
+Stored under a `jobState` key, keyed by job ID:
+
+```ts
+{
+  "job-abc123": {
+    tasks: [
+      { index: 0, name: "Write tests", status: "completed",   subagentSessionId: "s1"   },
+      { index: 1, name: "Implement",   status: "in_progress", subagentSessionId: "s2"   },
+      { index: 2, name: "Update docs", status: "pending",     subagentSessionId: null   }
+    ]
+  }
+}
+```
+
+This ensures task progress survives `opencode serve` crashes and app restarts. The orchestrator's session chat thread remains the canonical display; this store is strictly a progress checkpoint.
+
 ---
 
 ## UI Structure
@@ -266,6 +291,7 @@ The app uses these to:
 11. **Tray quit** — the only way to fully quit the app is right-click tray → Quit; window close always hides to tray
 12. **Permission vs question** — these are two distinct UI states, never merged into a single generic input. Permission has a structured approve/deny UI tied to a specific `permissionID`; a question has a free-text box.
 13. **Process log** — capture stdout/stderr from each `opencode serve` process, stored per job; surfaced via "View process log" in session panel only when job has failed
+14. **Job state persistence** — use `electron-store` to persist task progress on every structured JSON event. Load persisted state on startup and SSE reconnect; apply new events on top. Do not treat the SSE stream as the sole source of truth for task progress.
 
 ---
 
@@ -273,33 +299,34 @@ The app uses these to:
 
 These were explicitly decided and should not be reopened without good reason:
 
-| Topic                        | Decision                                                                       |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| Branch slug generation       | Local only — slugify the argument. No orchestrator involvement ever.           |
-| Branch name mutability       | Permanent after user confirms at job creation. Never renamed.                  |
-| Branch uniqueness scope      | Active jobs only. Archived jobs don't block reuse.                             |
-| Worktree directory name      | Fixed at creation, never renamed (Git constraint).                             |
-| Real-time updates            | SSE primary. Single poll on reconnect. No timer-based polling.                 |
-| Orchestrator event format    | Structured JSON blocks embedded in messages (not free-text parsing).           |
-| User workflows               | User-configurable folder in Settings, scanned alongside built-in `workflows/`. |
-| Onboarding — GitHub handle   | Plain text field only. No OAuth placeholder UI.                                |
-| Onboarding — opencode check  | Checked on every startup. Blocking error if not found.                         |
-| Permission vs question input | Two separate UI states, never merged.                                          |
-| Process crash handling       | One auto-restart, then fail the job.                                           |
-| Process log                  | Captured always, surfaced in session panel on failure.                         |
-| Dashboard — empty repos      | Hidden. Only repos with active jobs appear.                                    |
-| Archive search               | Single box across all fields (job name, repo, branch, workflow).               |
-| Failed job worktree          | Preserved. Manual delete from Archive tab.                                     |
-| Failed job error display     | Last error message shown prominently.                                          |
-| Tray quit                    | Right-click tray → Quit only. Window close hides.                              |
-| Tray icon                    | Programmatically generated via `nativeImage` (no icon file).                   |
-| Re-run                       | Not supported. Archive is read-only.                                           |
+| Topic                        | Decision                                                                                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Branch slug generation       | Local only — slugify the argument. No orchestrator involvement ever.                                                                |
+| Branch name mutability       | Permanent after user confirms at job creation. Never renamed.                                                                       |
+| Branch uniqueness scope      | Active jobs only. Archived jobs don't block reuse.                                                                                  |
+| Worktree directory name      | Fixed at creation, never renamed (Git constraint).                                                                                  |
+| Real-time updates            | SSE primary. Single poll on reconnect. No timer-based polling.                                                                      |
+| Orchestrator event format    | Structured JSON blocks embedded in messages (not free-text parsing).                                                                |
+| User workflows               | User-configurable folder in Settings, scanned alongside built-in `workflows/`.                                                      |
+| Onboarding — GitHub handle   | Plain text field only. No OAuth placeholder UI.                                                                                     |
+| Onboarding — opencode check  | Checked on every startup. Blocking error if not found.                                                                              |
+| Permission vs question input | Two separate UI states, never merged.                                                                                               |
+| Process crash handling       | One auto-restart, then fail the job.                                                                                                |
+| Process log                  | Captured always, surfaced in session panel on failure.                                                                              |
+| Dashboard — empty repos      | Hidden. Only repos with active jobs appear.                                                                                         |
+| Archive search               | Single box across all fields (job name, repo, branch, workflow).                                                                    |
+| Failed job worktree          | Preserved. Manual delete from Archive tab.                                                                                          |
+| Failed job error display     | Last error message shown prominently.                                                                                               |
+| Tray quit                    | Right-click tray → Quit only. Window close hides.                                                                                   |
+| Tray icon                    | Programmatically generated via `nativeImage` (no icon file).                                                                        |
+| Re-run                       | Not supported. Archive is read-only.                                                                                                |
+| Job state persistence        | `electron-store` in `userData`. Written on every structured event. Loaded on startup/reconnect. SSE is additive, not authoritative. |
 
 ---
 
 ## Build Milestones (implement in this order)
 
-- [ ] **1.** Electron shell + tray (programmatic icon) + window hide-on-close + right-click tray menu (Show / Quit)
+- [x] **1.** Electron shell + tray (programmatic icon) + window hide-on-close + right-click tray menu (Show / Quit)
 - [ ] **2.** First-launch onboarding (workspace folder + GitHub handle text field) + `opencode` binary startup check
 - [ ] **3.** Workspace scanning + repo list
 - [ ] **4.** Workflow YAML parsing + workflow library UI (built-in + user folder)
@@ -307,7 +334,7 @@ These were explicitly decided and should not be reopened without good reason:
 - [ ] **6.** OpenCode process spawning (stdout/stderr capture, one auto-restart) + HTTP API client
 - [ ] **7.** Job creation flow (repo → workflow → argument → branch name confirm/edit → create)
 - [ ] **8.** Dashboard with SSE-based live status (single poll on SSE reconnect)
-- [ ] **9.** Session panel + task list (structured JSON event parsing)
+- [ ] **9.** Session panel + task list (structured JSON event parsing + `electron-store` task state persistence)
 - [ ] **10.** Chat thread + two-mode input (permission approve/deny + free-text question)
 - [ ] **11.** Attention detection + macOS notifications + tray badge
 - [ ] **12.** Subagent drill-down (expand task row → subagent message thread)
