@@ -2129,7 +2129,7 @@ Examples:
 
 > **Action Required**
 > "Implement Feature" on my-app needs your approval.
-
+>
 > **Input Required**
 > "Implement Feature" on my-app is waiting for your input.
 
