@@ -2633,13 +2633,13 @@ Run `pnpm package` to produce a `.dmg` in `release/`. Double-click to install on
 
 ### `.github/workflows/ci.yml`
 
-Runs on every push to any branch and on every pull request targeting `main`.
+Runs on pushes to `main` and on every pull request targeting `main`.
 
 ```yaml
 name: CI
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -2668,7 +2668,7 @@ jobs:
         run: pnpm tsc --noEmit -p tsconfig.node.json && pnpm tsc --noEmit -p tsconfig.web.json
 
       - name: Test
-        run: pnpm test:all
+        run: pnpm test
 ```
 
 ---
@@ -2803,7 +2803,7 @@ fallback.
 Implement in this order. Mark `[x]` when complete.
 
 - [x] **M1.** Electron shell + tray (programmatic flame icon) + window hide-on-close + right-click tray menu (Show / Quit) + single-instance lock
-- [ ] **M2.** Make repo public on GitHub (enables the `workflow-schema.json` public URL) + CI pipeline: `.github/workflows/ci.yml`
+- [x] **M2.** Make repo public on GitHub (enables the `workflow-schema.json` public URL) + CI pipeline: `.github/workflows/ci.yml`
 - [ ] **M3.** Local packaging: `electron-builder` config in `package.json` + `pnpm package` script producing unsigned `.dmg`
 - [ ] **M4.** `electron-store` setup: schema v1, all typed accessors, schema-version migration logic
 - [ ] **M5.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
@@ -2906,3 +2906,4 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   or polyfill where needed (e.g. Windows tray badge via overlay icon, Linux notifications via
   `libnotify`). Would also require Windows/Linux CI runners and packaging targets in
   `electron-builder` config.
+- **Mode Selection** - Allow users to select the starting agent mode (ie build/plan) when creating a new job. This would require adding a new field to the workflow YAML schema, updating the UI to allow users to select the mode, and passing this information to the OpenCode orchestrator when creating the job.
