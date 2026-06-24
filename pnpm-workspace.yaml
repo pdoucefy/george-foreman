@@ -3,3 +3,5 @@ allowBuilds:
   electron: true
   simple-git-hooks: true
   unrs-resolver: true
+  electron-builder: true
+  electron-winstaller: true
