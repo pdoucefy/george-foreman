@@ -1,0 +1,21 @@
+appId: com.anomaly.george-foreman
+productName: George Foreman
+icon: resources/icon.icns
+
+directories:
+  buildResources: resources
+  output: release/${version}
+
+files:
+  - out/**/*
+  - workflows/**/*
+
+extraMetadata:
+  main: ./out/main/index.js
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - arm64

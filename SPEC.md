@@ -2589,40 +2589,38 @@ pnpm preview   # preview production build
 Produces an unsigned `.dmg` for running on your own machine. No Apple Developer account,
 no signing, no notarization required — macOS does not block apps you build locally from source.
 
-```bash
-pnpm add -D electron-builder
+`electron-builder` config lives in `electron-builder.yml` (not in `package.json`):
+
+```yaml
+appId: com.anomaly.george-foreman
+productName: George Foreman
+
+directories:
+  buildResources: resources
+  output: release/${version}
+
+files:
+  - out/**/*
+  - workflows/**/*
+
+extraMetadata:
+  main: ./out/main/index.js
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - arm64
 ```
 
-`electron-builder` config (add to `package.json`):
-
-```json
-"build": {
-  "appId": "com.anomaly.george-foreman",
-  "productName": "George Foreman",
-  "directories": {
-    "buildResources": "resources",
-    "output": "release/${version}"
-  },
-  "files": [
-    "out/**/*",
-    "workflows/**/*"
-  ],
-  "extraMetadata": {
-    "main": "./out/main/index.js"
-  },
-  "mac": {
-    "target": [
-      { "target": "dmg", "arch": ["arm64", "x64"] }
-    ],
-    "category": "public.app-category.productivity"
-  }
-}
-```
+Targets `arm64` (Apple Silicon) only. See §29 for the backlog item on adding `x64`/universal
+binary support.
 
 ### Build scripts
 
 ```json
-"package": "pnpm build && electron-builder --mac"
+"package": "pnpm build && electron-builder --mac --config electron-builder.yml"
 ```
 
 Run `pnpm package` to produce a `.dmg` in `release/`. Double-click to install on your own Mac.
@@ -2802,7 +2800,7 @@ Implement in this order. Mark `[x]` when complete.
 
 - [x] **M1.** Electron shell + tray (programmatic flame icon) + window hide-on-close + right-click tray menu (Show / Quit) + single-instance lock
 - [x] **M2.** Make repo public on GitHub (enables the `workflow-schema.json` public URL) + CI pipeline: `.github/workflows/ci.yml`
-- [ ] **M3.** Local packaging: `electron-builder` config in `package.json` + `pnpm package` script producing unsigned `.dmg`
+- [x] **M3.** Local packaging: `electron-builder.yml` config (arm64 only) + `pnpm package` script producing unsigned `.dmg`
 - [ ] **M4.** `electron-store` setup: schema v1, all typed accessors, schema-version migration logic
 - [ ] **M5.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
 - [ ] **M6.** UI component library (`src/renderer/src/components/ui/`):
@@ -2834,6 +2832,7 @@ Implement in this order. Mark `[x]` when complete.
 - [ ] **M19.** Attention detection: tray badge update + macOS notifications (isFocused gate) + notification click → navigate to job
 - [ ] **M20.** `ArchiveTab`: status filter tabs, search, virtual scrolling, archive/unarchive actions, worktree delete (with two-step confirmation)
 - [ ] **M21.** Settings UI: all four fields, Browse dialogs, Rescan button, auto-save, back navigation, `Cmd+,` shortcut
+- [ ] **M22.** Release prep: `pnpm release patch|minor|major` script (`scripts/release.mjs`) that guards on `main` branch + clean working tree, bumps `package.json` version, commits, creates a `vX.Y.Z` tag, and pushes both to origin; CI packaging pipeline (`.github/workflows/release.yml`) triggered on `v*` tags — builds arm64 `.dmg` via `pnpm package` and attaches it as a GitHub Release asset; verify all bundle assets (fonts, workflows, icon) are included in the DMG
 
 ---
 
@@ -2891,6 +2890,9 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   panel drill-down (expanded subagent rows). Swipe/mouse-back would unwind this stack naturally.
   Would require either a lightweight client-side router (e.g. `react-router`) or a custom
   `history.pushState` / `popstate` implementation integrated with the Zustand store.
+- **x64 / universal binary support** — the current `.dmg` targets `arm64` (Apple Silicon) only.
+  To distribute to Intel Mac users, add `x64` (or `universal`) to the `arch` list in
+  `electron-builder.yml` and update the M22 CI packaging step accordingly.
 - **macOS code signing + notarization + distribution** — required only if distributing the app
   to other users' Macs. Needs an Apple Developer Program membership ($99/year). The chain:
   Developer ID certificate (`CSC_LINK` + `CSC_KEY_PASSWORD`) → sign the `.app` →
@@ -2905,3 +2907,4 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   `libnotify`). Would also require Windows/Linux CI runners and packaging targets in
   `electron-builder` config.
 - **Mode Selection** - Allow users to select the starting agent mode (ie build/plan) when creating a new job. This would require adding a new field to the workflow YAML schema, updating the UI to allow users to select the mode, and passing this information to the OpenCode orchestrator when creating the job.
+- **Unified icon source** — `tray-icon.ts` currently uses a hardcoded 22×22 base64 PNG independent of `resources/icon.icns`. A future improvement would load the tray icon from `resources/icon.icns` at runtime (Electron picks the right size automatically), making `pnpm generate-icon` the single source of truth for all icon surfaces. Trade-off: adds file I/O at startup and complicates path resolution in dev vs production. Revisit if the tray icon needs dynamic variants or the two icons diverge significantly.

@@ -12,7 +12,7 @@ export default defineConfig(
 
   // All TypeScript files — TypeScript + general + import rules
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    files: ['src/**/*.ts', 'src/**/*.tsx', 'scripts/**/*.ts'],
     extends: [tseslint.configs.recommended],
     plugins: {
       import: importPlugin,
@@ -146,9 +146,9 @@ export default defineConfig(
     },
   },
 
-  // Main process + shared — Node.js environment
+  // Main process + shared + scripts — Node.js environment
   {
-    files: ['src/main/**/*.ts', 'src/shared/**/*.ts'],
+    files: ['src/main/**/*.ts', 'src/shared/**/*.ts', 'scripts/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -228,6 +228,14 @@ export default defineConfig(
     },
     settings: {
       react: { version: 'detect' },
+    },
+  },
+
+  // Scripts — override no-console (scripts log to stdout intentionally)
+  {
+    files: ['scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
 
