@@ -789,6 +789,19 @@ Step 4 — Confirm
 Used as the suffix for AV ticket branches so the branch reflects what the workflow does
 rather than repeating the ticket number (e.g. `AV-123/Implement-Feature`).
 
+**When `workflow.argument === 'none'` (no argument input shown):**
+
+The argument is empty, so `<local-slug>` would be empty. In this case the branch pattern
+uses `<workflow-slug>` only — no `/<local-slug>` suffix:
+
+| Condition                                       | Branch pattern                                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
+| AV pattern + no argument                        | `AV-<ARGUMENT>/<workflow-slug>` is not applicable; falls through to none-of-the-above |
+| Workflow keyword match (bugfix, refactor, etc.) | `<prefix>/<workflow-slug>` (e.g. `bugfix/Fix-Login`)                                  |
+| None of the above                               | `<github-handle>/<workflow-slug>` (e.g. `pdoucefy/Implement-Feature`)                 |
+
+The user can still edit the full branch name at step 4.
+
 Examples:
 
 | Input              | Output (`<local-slug>`) |
@@ -1154,8 +1167,10 @@ const schJob = z.object({
   id: z.string(), // 'job-<crypto.randomUUID()>'
   repoName: z.string(), // Directory basename of the repo
   repoPath: z.string(), // Absolute path to source repo
-  worktreePath: z.string(), // Absolute path to worktree directory
-  worktreeDeleted: z.boolean(), // true after worktree is deleted
+  worktreePath: z.string(), // Absolute path to worktree directory.
+  // After deletion, this value is RETAINED for display/audit purposes.
+  // Always check worktreeDeleted before accessing the filesystem at this path.
+  worktreeDeleted: z.boolean(), // true after worktree is deleted; worktreePath still holds old path
   branchName: z.string(), // Full branch name (e.g. 'av-123/the-auth-module')
   baseBranch: z.string(), // Branch the worktree was created from
   workflowName: z.string(), // Display name of the workflow used
@@ -1239,21 +1254,8 @@ Each raw SSE message received from `GET /event` is processed through two separat
 
 #### Pipeline 1 — `GlobalEvent` wrapper (platform events)
 
-Every SSE message from the OpenCode server is a `GlobalEvent`:
-
-```ts
-const schGlobalEvent = z.object({
-  directory: z.string(), // project root
-  payload: z.object({
-    type: z.string(), // e.g. 'permission.updated', 'session.idle', 'session.error', 'message.part.updated'
-    properties: z.unknown(),
-  }),
-});
-
-type GlobalEvent = z.infer<typeof schGlobalEvent>;
-```
-
-Parse the SSE `data` field as JSON. If it matches this shape, dispatch on `payload.type`:
+Every SSE message from the OpenCode server is a `GlobalEvent`. The canonical schema is
+defined in §16 (`schGlobalEvent`). Pipeline 1 dispatches on `payload.type`:
 
 | `payload.type`         | Action                                                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -1485,9 +1487,17 @@ type EventSessionIdle = z.infer<typeof schEventSessionIdle>;
   - Mark job `completed`, set `completedAt`, set `archivedAt = Date.now()`
   - Auto-delete worktree (same logic as `workflow_completed` above)
   - Persist; send `job:updated` IPC (Zustand moves to Archive because `archivedAt !== null`)
-- Else if `job.status === 'running'`:
-  - Mark job `failed` with reason `"Orchestrator ended unexpectedly before all tasks completed"`
-  - Send `job:updated` IPC
+- Else if `job.status === 'running'` AND tasks are incomplete:
+  - The orchestrator is paused mid-workflow, likely waiting for user input
+  - Do **not** mark the job `failed`
+  - Show the **"Waiting for your input…"** hint in the free-text input placeholder (see §19)
+  - If `!app.isFocused()` → fire macOS notification:
+    ```text
+    Title: Input Required
+    Body:  "<workflow name>" on <repo name> is waiting for your input.
+    ```
+  - Job stays `running`; user can send a free-text message to resume the orchestrator
+  - Job only transitions to `failed` if `session.error` fires, or if the user stops it
 
 ### `session.error` — structured error from orchestrator
 
@@ -1652,7 +1662,14 @@ Defined in `src/shared/ipc.ts`. Implemented in `src/preload/index.ts` via `conte
   → () => Promise<Job[]>
   // Returns jobs where archivedAt !== null
 'job:delete-worktree'
+  → (jobId: string) => Promise<{ success: boolean; hasUncommittedChanges?: boolean; error?: string }>
+  // Step 1: attempts git worktree remove (no --force)
+  // On success: { success: true }
+  // On uncommitted changes: { success: false, hasUncommittedChanges: true, error: '...' }
+  // On other failure: { success: false, error: '...' }
+'job:delete-worktree-force'
   → (jobId: string) => Promise<{ success: boolean; error?: string }>
+  // Step 2: attempts git worktree remove --force (only called after user confirms Force Delete)
 'job:get-log'
   → (jobId: string) => Promise<string>
 
@@ -2085,29 +2102,36 @@ Step 2 is identical structure with GitHub handle field and "Get Started →" CTA
 
 Fire a macOS notification when **all** of the following are true:
 
-1. A job's status transitions to `needs_attention` (from any other status)
-2. `app.isFocused() === false`
+1. `app.isFocused() === false`
+2. One of:
+   - A job's status transitions to `needs_attention` (permission request)
+   - `session.idle` fires on the orchestrator session while `job.status === 'running'` and tasks are incomplete (orchestrator paused, waiting for input)
 
 Never fire when the app window is focused.
 
 ### Notification content
 
+**Permission request** (`needs_attention`):
+
 ```text
 Title: Action Required
-Body:  "<workflow name>" on <repo name> needs <action type>.
+Body:  "<workflow name>" on <repo name> needs your approval.
 ```
 
-Where `<action type>`:
+**Orchestrator paused** (`session.idle` mid-workflow):
 
-- `"your approval"` — for permission requests (`pendingPermission !== null`)
+```text
+Title: Input Required
+Body:  "<workflow name>" on <repo name> is waiting for your input.
+```
 
-Notifications are only fired for permission requests (`needs_attention` state). The app does
-not fire a notification for the persistent free-text input opportunity.
-
-Example:
+Examples:
 
 > **Action Required**
 > "Implement Feature" on my-app needs your approval.
+
+> **Input Required**
+> "Implement Feature" on my-app is waiting for your input.
 
 ### App icon
 
@@ -2115,6 +2139,8 @@ Electron sets the notification app icon via `app.setIcon(nativeImage.createFromD
 macOS automatically includes the app icon in notification banners.
 
 ### Notification click
+
+For both notification types:
 
 1. `mainWindow.show(); mainWindow.focus()`
 2. Main process sends `navigate:job` IPC with the `jobId`
@@ -2132,35 +2158,35 @@ macOS automatically includes the app icon in notification banners.
 
 ### Complete error catalog
 
-| Scenario                                      | Detection                    | Recovery                                                        | User-facing message                                          |
-| --------------------------------------------- | ---------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------ |
-| `opencode` not found on PATH                  | Startup check                | "Recheck" after install                                         | Banner: "opencode not found on PATH"                         |
-| `opencode serve` never becomes ready          | 30s health timeout           | Mark `failed`                                                   | "opencode serve did not start in 30 seconds"                 |
-| `opencode serve` first crash                  | `exit` event                 | Auto-restart (1s delay)                                         | Transparent to user                                          |
-| `opencode serve` second crash                 | `exit` event                 | Mark `failed`, preserve log                                     | "opencode serve crashed twice"                               |
-| `git worktree add` fails                      | Non-zero exit                | Mark `failed`                                                   | Verbatim git error                                           |
-| Branch already exists in repo                 | `git show-ref`               | Inline error at step 4                                          | "Branch already exists. Choose a different name."            |
-| Branch name duplicate (active jobs)           | Pre-validate                 | Inline error at step 4                                          | "A job with this branch name is already active."             |
-| Branch name invalid chars                     | Pre-validate                 | Inline error at step 4                                          | "Branch name contains invalid characters."                   |
-| Workspace folder missing                      | Scan trigger                 | Error in Settings                                               | "Folder not found. Update path in Settings."                 |
-| Repo removed during job creation              | Validate on create           | Error at creation                                               | "Repo not found"                                             |
-| SSE connection drops                          | `error`/`end` event          | Exponential backoff reconnect                                   | Transparent (badge reflects known state)                     |
-| API non-2xx                                   | HTTP response                | Log + mark `failed` immediately                                 | Last error response body                                     |
-| API network error                             | `ECONNREFUSED` etc.          | Retry 3× / 500ms                                                | "Could not reach opencode API"                               |
-| Disk full (worktree)                          | OS error from git            | Mark `failed`                                                   | OS error message                                             |
-| File copy failure                             | `fs.copyFile` error          | Warn + continue                                                 | Non-fatal; visible in process log                            |
-| Job `pending` at startup                      | Startup restore              | Mark `failed` immediately                                       | "Job creation was interrupted"                               |
-| Running job restart fails                     | Health timeout               | Mark `failed`                                                   | "Failed to restart after app relaunch"                       |
-| Argument slug is empty                        | Slug result empty            | Fallback slug                                                   | Transparent                                                  |
-| Subagent messages fetch fails                 | HTTP error                   | Error state in expanded row                                     | "Could not load messages. [Retry]"                           |
-| Worktree delete fails (uncommitted changes)   | `git worktree remove` error  | Second confirmation dialog with Force Delete option             | "This worktree has uncommitted changes. Force delete?"       |
-| Worktree delete fails (other error)           | `git worktree remove` error  | `git worktree prune` + error in dialog                          | Verbatim git error                                           |
-| Auto-delete on completion fails (uncommitted) | `git worktree remove` error  | Persist `worktreeDeleted: false`; show warning on archived card | "Worktree not deleted — uncommitted changes detected."       |
-| YAML workflow malformed                       | Parse error                  | Skip file, `console.warn`                                       | (silent; shown if all workflows fail to load)                |
-| `electron-store` schema mismatch              | Schema version check         | Clear jobs, preserve config                                     | Transparent                                                  |
-| Orchestrator structured event parse fails     | JSON.parse error             | Log + treat as prose                                            | Transparent                                                  |
-| `session.error` SSE event received            | SSE event type check         | Mark `failed` with error msg                                    | Error message from the event                                 |
-| `session.idle` before all tasks complete      | SSE event + task state check | Mark `failed`                                                   | "Orchestrator ended unexpectedly before all tasks completed" |
+| Scenario                                       | Detection                    | Recovery                                                                          | User-facing message                                           |
+| ---------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `opencode` not found on PATH                   | Startup check                | "Recheck" after install                                                           | Banner: "opencode not found on PATH"                          |
+| `opencode serve` never becomes ready           | 30s health timeout           | Mark `failed`                                                                     | "opencode serve did not start in 30 seconds"                  |
+| `opencode serve` first crash                   | `exit` event                 | Auto-restart (1s delay)                                                           | Transparent to user                                           |
+| `opencode serve` second crash                  | `exit` event                 | Mark `failed`, preserve log                                                       | "opencode serve crashed twice"                                |
+| `git worktree add` fails                       | Non-zero exit                | Mark `failed`                                                                     | Verbatim git error                                            |
+| Branch already exists in repo                  | `git show-ref`               | Inline error at step 4                                                            | "Branch already exists. Choose a different name."             |
+| Branch name duplicate (active jobs)            | Pre-validate                 | Inline error at step 4                                                            | "A job with this branch name is already active."              |
+| Branch name invalid chars                      | Pre-validate                 | Inline error at step 4                                                            | "Branch name contains invalid characters."                    |
+| Workspace folder missing                       | Scan trigger                 | Error in Settings                                                                 | "Folder not found. Update path in Settings."                  |
+| Repo removed during job creation               | Validate on create           | Error at creation                                                                 | "Repo not found"                                              |
+| SSE connection drops                           | `error`/`end` event          | Exponential backoff reconnect                                                     | Transparent (badge reflects known state)                      |
+| API non-2xx                                    | HTTP response                | Log + mark `failed` immediately                                                   | Last error response body                                      |
+| API network error                              | `ECONNREFUSED` etc.          | Retry 3× / 500ms                                                                  | "Could not reach opencode API"                                |
+| Disk full (worktree)                           | OS error from git            | Mark `failed`                                                                     | OS error message                                              |
+| File copy failure                              | `fs.copyFile` error          | Warn + continue                                                                   | Non-fatal; visible in process log                             |
+| Job `pending` at startup                       | Startup restore              | Mark `failed` immediately                                                         | "Job creation was interrupted"                                |
+| Running job restart fails                      | Health timeout               | Mark `failed`                                                                     | "Failed to restart after app relaunch"                        |
+| Argument slug is empty                         | Slug result empty            | Fallback slug                                                                     | Transparent                                                   |
+| Subagent messages fetch fails                  | HTTP error                   | Error state in expanded row                                                       | "Could not load messages. [Retry]"                            |
+| Worktree delete fails (uncommitted changes)    | `git worktree remove` error  | Second confirmation dialog with Force Delete option                               | "This worktree has uncommitted changes. Force delete?"        |
+| Worktree delete fails (other error)            | `git worktree remove` error  | `git worktree prune` + error in dialog                                            | Verbatim git error                                            |
+| Auto-delete on completion fails (uncommitted)  | `git worktree remove` error  | Persist `worktreeDeleted: false`; show warning on archived card                   | "Worktree not deleted — uncommitted changes detected."        |
+| YAML workflow malformed                        | Parse error                  | Skip file, `console.warn`                                                         | (silent; shown if all workflows fail to load)                 |
+| `electron-store` schema mismatch               | Schema version check         | Clear jobs, preserve config                                                       | Transparent                                                   |
+| Orchestrator structured event parse fails      | JSON.parse error             | Log + treat as prose                                                              | Transparent                                                   |
+| `session.error` SSE event received             | SSE event type check         | Mark `failed` with error msg                                                      | Error message from the event                                  |
+| `session.idle` mid-workflow (tasks incomplete) | SSE event + task state check | Show "Waiting for input" hint; fire notification if !focused; job stays `running` | "Input Required — waiting for your input" (notification only) |
 
 ### General failure principles
 
@@ -2368,7 +2394,10 @@ type ElectronAPI = {
     unarchive: (jobId: string) => Promise<void>; // failed/stopped only; not for completed
     listActive: () => Promise<Job[]>; // archivedAt === null
     listArchive: () => Promise<Job[]>; // archivedAt !== null
-    deleteWorktree: (jobId: string) => Promise<{ success: boolean; error?: string }>;
+    deleteWorktree: (
+      jobId: string,
+    ) => Promise<{ success: boolean; hasUncommittedChanges?: boolean; error?: string }>;
+    deleteWorktreeForce: (jobId: string) => Promise<{ success: boolean; error?: string }>;
     getLog: (jobId: string) => Promise<string>;
   };
   permission: {
@@ -2493,7 +2522,7 @@ import '@testing-library/jest-dom';
 | `worktree.ts`         | Path generation (branch `/` → `--`); command construction; `execFile` args; error propagation                                                                          |
 | `opencode-process.ts` | Port discovery from stdout; fallback to 4096; crash count increment; second crash → `failed`; SIGTERM then SIGKILL sequence                                            |
 | `store.ts`            | Schema version migration clears jobs preserves config; typed get/set round-trips                                                                                       |
-| `notifications.ts`    | Notification content: permission vs question action type; `isFocused` gate                                                                                             |
+| `notifications.ts`    | Permission notification content + `isFocused` gate; `session.idle` pause notification content + `isFocused` gate; no notification when app is focused                  |
 | `job-manager.ts`      | State transitions (all from §14); startup restore logic                                                                                                                |
 | Branch utils          | Slug generation (all edge cases); prefix selection (all 8 cases); uniqueness validation; git ref validity                                                              |
 
@@ -2668,7 +2697,7 @@ pnpm add -D electron-builder @testing-library/react @testing-library/user-event 
 
 | Package                        | Version constraint | Purpose                                         |
 | ------------------------------ | ------------------ | ----------------------------------------------- |
-| `electron-builder`             | `^25`              | macOS packaging, signing, notarization          |
+| `electron-builder`             | `^25`              | macOS local packaging (unsigned `.dmg`)         |
 | `@testing-library/react`       | `^16`              | Renderer component testing                      |
 | `@testing-library/user-event`  | `^14`              | Simulated user interactions in tests            |
 | `@testing-library/jest-dom`    | `^6`               | Custom DOM matchers (`toBeInTheDocument`, etc.) |
@@ -2864,8 +2893,6 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   panel drill-down (expanded subagent rows). Swipe/mouse-back would unwind this stack naturally.
   Would require either a lightweight client-side router (e.g. `react-router`) or a custom
   `history.pushState` / `popstate` implementation integrated with the Zustand store.
-- **OAuth GitHub integration** — replace plain-text GitHub handle with OAuth login; enables PR
-  creation, issue linking, richer branch metadata
 - **macOS code signing + notarization + distribution** — required only if distributing the app
   to other users' Macs. Needs an Apple Developer Program membership ($99/year). The chain:
   Developer ID certificate (`CSC_LINK` + `CSC_KEY_PASSWORD`) → sign the `.app` →
