@@ -67,7 +67,7 @@ Two-step setup presented as a full-screen overlay before the main UI.
 ### Step 2 — GitHub Handle
 
 - Heading: "What's your GitHub username?"
-- Subtext: "Used for naming branches when no other pattern matches (e.g. `pdoucefy/feature-name`)"
+- Subtext: "Used for naming branches when no other pattern matches (e.g. `sam/feature-name`)"
 - Input: plain text field
 - Validation (on Get Started click):
   - Non-empty

@@ -133,19 +133,19 @@ describe('Onboarding', () => {
 
     it('calls onboarding.complete with correct params on valid submission', async () => {
       await advanceToStep2();
-      await userEvent.type(screen.getByRole('textbox'), 'pdoucefy');
+      await userEvent.type(screen.getByRole('textbox'), 'sam');
       await userEvent.click(screen.getByRole('button', { name: /Get Started/i }));
       await waitFor(() => {
         expect(mockComplete).toHaveBeenCalledWith({
           workspaceFolder: '/Users/me/workspace',
-          githubHandle: 'pdoucefy',
+          githubHandle: 'sam',
         });
       });
     });
 
     it('calls onDone after successful completion', async () => {
       await advanceToStep2();
-      await userEvent.type(screen.getByRole('textbox'), 'pdoucefy');
+      await userEvent.type(screen.getByRole('textbox'), 'sam');
       await userEvent.click(screen.getByRole('button', { name: /Get Started/i }));
       await waitFor(() => {
         expect(onDone).toHaveBeenCalledOnce();

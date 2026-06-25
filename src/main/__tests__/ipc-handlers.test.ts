@@ -147,18 +147,18 @@ describe('registerIpcHandlers', () => {
       const handler = getHandler('onboarding:complete');
       mockCheckOpenCodeBinary.mockResolvedValue({ found: true, path: '/usr/local/bin/opencode' });
 
-      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'pdoucefy' });
+      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
 
       const config = storeGet('config');
       expect(config.workspaceFolder).toBe('/Users/me/repos');
-      expect(config.githubHandle).toBe('pdoucefy');
+      expect(config.githubHandle).toBe('sam');
     });
 
     it('runs checkOpenCodeBinary and sends binary:status after completion', async () => {
       const handler = getHandler('onboarding:complete');
       mockCheckOpenCodeBinary.mockResolvedValue({ found: true, path: '/usr/local/bin/opencode' });
 
-      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'pdoucefy' });
+      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
 
       expect(mockCheckOpenCodeBinary).toHaveBeenCalledOnce();
       expect(mockSend).toHaveBeenCalledWith('binary:status', { found: true });
