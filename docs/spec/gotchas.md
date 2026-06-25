@@ -6,6 +6,36 @@
 `eslint-plugin-react@8` ships with flat config support. Do not upgrade ESLint past v9 until
 this is resolved.
 
+## `@electron-toolkit/utils` must not be imported in the preload
+
+`@electron-toolkit/utils` accesses `electron.app.isPackaged` at **module load time**. `electron.app`
+is `undefined` in the preload context (it only exists in the main process). Importing it in
+`src/preload/index.ts` will throw `TypeError: Cannot read properties of undefined (reading 'isPackaged')`
+and prevent the preload from loading entirely, leaving `window.api` undefined.
+
+**Fix:** in the preload, use `process.env.NODE_ENV === 'development'` instead of `is.dev`.
+electron-vite sets `NODE_ENV=development` during `pnpm dev`.
+
+## Pure-ESM dependencies must be excluded from `externalizeDepsPlugin`
+
+`electron-store` (and its dependency `conf`) are pure ESM packages — they have `"type": "module"`
+and no CJS fallback. `externalizeDepsPlugin` externalises all `dependencies` as `require()` calls
+in the CJS main bundle. `require()` cannot natively load a pure ESM module; it returns the module
+namespace object instead of the default export, causing `TypeError: ElectronStore is not a
+constructor` at runtime.
+
+**Fix:** exclude the package in `electron.vite.config.ts` so vite bundles it inline (transpiling
+ESM → CJS in the process):
+
+```ts
+// electron.vite.config.ts
+main: {
+  plugins: [externalizeDepsPlugin({ exclude: ['electron-store'] })],
+}
+```
+
+Any future pure-ESM dependency used in the main process must be added to this `exclude` list.
+
 ## `pnpm approve-builds` duplicates YAML keys
 
 **Never run `pnpm approve-builds` or `pnpm approve-builds --all`.** It appends to
@@ -160,3 +190,11 @@ modal content contains no naturally focusable element.
 ```
 
 This is safe in production too — it only activates when no other focusable node exists.
+
+## `window.api` is partially wired until M16
+
+Only the M8 channels (`onboarding`, `binary`, `dialog`) are exposed via `contextBridge` until
+M16 completes the full bridge. The remaining push subscriptions (`onJobCreated`, `onJobUpdated`,
+`onWorkspaceUpdated`, `onNavigateJob`, `onSseEvent`, `onSseOrchestratorEvent`) are stub no-ops
+that return `() => {}`. Calling any other `window.api` method (e.g. `job.create`) before M16
+will fail at runtime. Do not call unimplemented channels from renderer code before M16.

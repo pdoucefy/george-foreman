@@ -24,7 +24,7 @@ Implement in this order.
   - `CodeBlock` + `Code` (inline) — for markdown rendering in chat thread
   - `Icon` — thin re-export of `lucide-react` with consistent default `size={16}` and `strokeWidth={1.5}`
     All components use theme tokens exclusively. No inline styles. Each has a test in `src/renderer/__tests__/`.
-- [ ] **M8.** First-launch onboarding (2-step: workspace folder + GitHub handle) + `opencode` binary startup check + persistent error banner
+- [x] **M8.** First-launch onboarding (2-step: workspace folder + GitHub handle) + `opencode` binary startup check + persistent error banner
   - **M4 store verification:** after completing onboarding, quit and relaunch the app — confirm it goes straight to the main UI (onboarding does not reappear). This proves the store correctly persisted `workspaceFolder` and `githubHandle`.
 - [ ] **M9.** Workspace scanning (`workspace.ts`): `.git` dir detection, symlink support, default branch detection
 - [ ] **M10.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` substitution + validation + create `workflows/workflow-schema.json`

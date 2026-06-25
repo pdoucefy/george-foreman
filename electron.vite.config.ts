@@ -5,7 +5,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin({ exclude: ['electron-store'] })],
     resolve: {
       alias: {
         '@shared/types': resolve('src/shared/types/index.ts'),

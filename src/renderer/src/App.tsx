@@ -1,36 +1,79 @@
-import React from 'react';
-import styled, { ThemeProvider } from 'styled-components';
+import React, { useEffect, useState } from 'react';
+import { ThemeProvider } from 'styled-components';
 
 import { GlobalStyle } from './GlobalStyle.ts';
+import { Onboarding } from './components/Onboarding/index.tsx';
+import { Banner } from './components/ui/Banner.tsx';
+import { Spinner } from './components/ui/Spinner.tsx';
+import { useAppStore } from './store.ts';
 import { theme } from './theme.ts';
 
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  gap: 8px;
-`;
+// §8 — App shell: routing between Onboarding and main UI
 
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-`;
+type AppStatus = 'loading' | 'onboarding' | 'ready';
 
-const Subtitle = styled.p`
-  font-size: 14px;
-  color: #888;
-`;
+export const App = (): React.JSX.Element => {
+  const [status, setStatus] = useState<AppStatus>('loading');
+  const binaryFound = useAppStore((s) => s.binaryFound);
+  const setBinaryFound = useAppStore((s) => s.setBinaryFound);
+  const setShowSettings = useAppStore((s) => s.setShowSettings);
 
-const App = (): React.JSX.Element => (
-  <ThemeProvider theme={theme}>
-    <GlobalStyle />
-    <Container>
-      <Title>George Foreman</Title>
-      <Subtitle>AI Agent Workflow Manager</Subtitle>
-    </Container>
-  </ThemeProvider>
-);
+  useEffect(() => {
+    window.api.onboarding
+      .isComplete()
+      .then((complete) => {
+        setStatus(complete ? 'ready' : 'onboarding');
+      })
+      .catch(console.error);
+  }, []);
 
-export { App };
+  useEffect(() => {
+    const unsubBinary = window.api.onBinaryStatus(({ found }) => {
+      setBinaryFound(found);
+    });
+    const unsubSettings = window.api.onNavigateSettings(() => {
+      setShowSettings(true);
+    });
+    const unsubJobCreated = window.api.onJobCreated((job) => {
+      useAppStore.getState().upsertJob(job);
+    });
+    const unsubJobUpdated = window.api.onJobUpdated((job) => {
+      useAppStore.getState().upsertJob(job);
+    });
+    const unsubWorkspace = window.api.onWorkspaceUpdated((repos) => {
+      useAppStore.getState().setRepos(repos);
+    });
+    const unsubNavigateJob = window.api.onNavigateJob((jobId) => {
+      useAppStore.getState().setShowSettings(false);
+      useAppStore.getState().setActiveTab('dashboard');
+      useAppStore.getState().selectJob(jobId);
+    });
+
+    return () => {
+      unsubBinary();
+      unsubSettings();
+      unsubJobCreated();
+      unsubJobUpdated();
+      unsubWorkspace();
+      unsubNavigateJob();
+    };
+  }, [setBinaryFound, setShowSettings]);
+
+  const handleOnboardingDone = (): void => {
+    setStatus('ready');
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyle />
+      {status === 'loading' && <Spinner aria-label="Loading" />}
+      {status === 'onboarding' && <Onboarding onDone={handleOnboardingDone} />}
+      {status === 'ready' && (
+        <>
+          <Banner binaryFound={binaryFound} />
+          {/* Main shell — DashboardTab / ArchiveTab / Settings wired in M17+ */}
+        </>
+      )}
+    </ThemeProvider>
+  );
+};

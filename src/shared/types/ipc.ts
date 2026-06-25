@@ -100,6 +100,12 @@ export type ElectronAPI = {
   onWorkspaceUpdated: (cb: (repos: Repo[]) => void) => () => void;
   onNavigateJob: (cb: (jobId: string) => void) => () => void;
   onNavigateSettings: (cb: () => void) => () => void;
+
+  // Dev-only helpers — available in development builds only (is.dev === true)
+  dev?: {
+    clearStore: () => Promise<void>;
+    resetAndReload: () => Promise<void>;
+  };
 };
 
 declare global {

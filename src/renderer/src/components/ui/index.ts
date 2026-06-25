@@ -1,4 +1,5 @@
 export { Badge, StatusPill } from './Badge.tsx';
+export { Banner } from './Banner.tsx';
 export { Button } from './Button.tsx';
 export type { ButtonVariant } from './Button.tsx';
 export { CodeBlock, Code } from './CodeBlock.tsx';

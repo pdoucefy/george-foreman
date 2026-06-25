@@ -23,54 +23,93 @@ pnpm tsc --noEmit -p tsconfig.web.json
 
 ---
 
+## Development tips
+
+### Resetting the store (re-trigger onboarding)
+
+In `pnpm dev`, open DevTools (`Cmd+Option+I`) and run:
+
+```js
+window.api.dev.resetAndReload();
+```
+
+This clears the entire `electron-store` and reloads the renderer. On the next
+`app.whenReady()` cycle the store is recreated with defaults — `workspaceFolder`
+is empty, so onboarding reappears.
+
+`window.api.dev` is only present in development builds (`is.dev === true`).
+It is not exposed in production.
+
+---
+
 ## Current codebase state
 
 Real files (not stubs):
 
 ```text
 src/main/
-  index.ts            — App entry: BrowserWindow, single-instance, lifecycle wiring
+  index.ts            — App entry: BrowserWindow, single-instance, lifecycle wiring,
+                        registerIpcHandlers(), runStartupChecks()
   store.ts            — electron-store instance + schema migration + typed storeGet/storeSet
   window.ts           — Pure: shouldHideOnClose() + shouldAllowNewInstance()
+  binary-check.ts     — checkOpenCodeBinary(): runs `which opencode`, returns { found, path? }
+  ipc-handlers.ts     — registerIpcHandlers(mainWindow): M8 IPC handlers
+                        (onboarding:is-complete, onboarding:complete, binary:check,
+                        binary:recheck, dialog:open-directory)
   __tests__/
     store.test.ts     — 18 tests; uses vi.hoisted mock pattern (see Testing Patterns below)
     window.test.ts    — hide/quit decision, single-instance decision
+    binary-check.test.ts — 4 tests: found, not found, path trimming, empty stdout
+    ipc-handlers.test.ts — 10 tests: all M8 handler behaviors
 
 src/renderer/src/
   theme.ts            — Design token object (bg, accent, status, text, border, space, font,
-                        fontWeight, fontSize, radius, shadow) + Theme type
+                        fontSize, radius, shadow) + Theme type
   GlobalStyle.ts      — createGlobalStyle: box-sizing reset, body background/color/font,
                         custom scrollbars (webkit + scrollbar-width), ::selection highlight
   styled.d.ts         — DefaultTheme augmentation: interface DefaultTheme extends Theme {}
-  App.tsx             — ThemeProvider + GlobalStyle wired; placeholder Container/Title/Subtitle
-                        (content is a stub, to be replaced in later milestones)
+  App.tsx             — ThemeProvider + GlobalStyle + routing shell: Spinner while loading,
+                        Onboarding on first launch, main shell (Banner + future tabs) when ready;
+                        registers all IPC push listeners (onBinaryStatus, onNavigateSettings,
+                        onJobCreated, onJobUpdated, onWorkspaceUpdated, onNavigateJob)
+  store.ts            — Zustand AppStore: full shape per ipc.md spec (repos, jobs, selectedJobId,
+                        activeTab, showSettings, binaryFound + setters)
   main.tsx            — ReactDOM.createRoot + 9 @fontsource CSS imports
-  components/ui/
-    index.ts          — Barrel re-export of all UI components
-    Badge.tsx         — Badge (generic pill) + StatusPill (maps JobStatus → color token)
-    Button.tsx        — variants: primary, secondary, ghost, danger; loading + disabled states
-    CodeBlock.tsx     — CodeBlock (fenced <pre><code>) + Code (inline); styled wrappers only
-    Icon.tsx          — icon(LucideIcon) tree-shaking helper; default size=16, strokeWidth=1.5
-    ScrollArea.tsx    — styled.div with overflow:auto + scoped themed scrollbar CSS
-    Select.tsx        — @radix-ui/react-select wrapper; keyboard nav; themed
-    Separator.tsx     — horizontal/vertical divider using border.subtle
-    Spinner.tsx       — animated loading indicator with role="status"
-    Textarea.tsx      — label, placeholder, error message, disabled
-    TextInput.tsx     — label, placeholder, error message, disabled
-    fieldUtils.ts     — Shared FieldWrapper, FieldLabel, FieldError, fieldInputCss
-    Modal/
-      index.tsx       — backdrop, close on Esc + backdrop click, focus-trap-react
-    Toast/
-      index.tsx       — ToastProvider; fixed top-right container; auto-dismiss (4s default)
-      useToast.ts     — useToast() context hook; ToastContext; ToastVariant type
+  components/
+    Onboarding/
+      index.tsx       — 2-step onboarding overlay (workspace folder + GitHub handle);
+                        Browse via dialog:open-directory IPC; calls onboarding.complete on submit
+    ui/
+      index.ts        — Barrel re-export of all UI components
+      Badge.tsx       — Badge (generic pill) + StatusPill (maps JobStatus → color token)
+      Banner.tsx      — Binary-missing warning banner with Recheck button
+      Button.tsx      — variants: primary, secondary, ghost, danger; loading + disabled states
+      CodeBlock.tsx   — CodeBlock (fenced <pre><code>) + Code (inline); styled wrappers only
+      Icon.tsx        — icon(LucideIcon) tree-shaking helper; default size=16, strokeWidth=1.5
+      ScrollArea.tsx  — styled.div with overflow:auto + scoped themed scrollbar CSS
+      Select.tsx      — @radix-ui/react-select wrapper; keyboard nav; themed
+      Separator.tsx   — horizontal/vertical divider using border.subtle
+      Spinner.tsx     — animated loading indicator with role="status"
+      Textarea.tsx    — label, placeholder, error message, disabled
+      TextInput.tsx   — label, placeholder, error message, disabled
+      fieldUtils.ts   — Shared FieldWrapper, FieldLabel, FieldError, fieldInputCss
+      Modal/
+        index.tsx     — backdrop, close on Esc + backdrop click, focus-trap-react
+      Toast/
+        index.tsx     — ToastProvider; fixed top-right container; auto-dismiss (4s default)
+        useToast.ts   — useToast() context hook; ToastContext; ToastVariant type
 
 src/renderer/__tests__/
   setup.ts            — @testing-library/jest-dom import for happy-dom environment
+  App.test.tsx        — integration tests: Spinner while loading, Onboarding/main shell routing,
+                        IPC listener registration
   Badge.test.tsx      — render tests (all 6 JobStatus values)
+  Banner.test.tsx     — render tests (shown/hidden by binaryFound), Recheck interaction
   Button.test.tsx     — interaction tests (click, disabled, loading)
   CodeBlock.test.tsx  — render tests
   Icon.test.tsx       — render tests (defaults, override, tree-shaking)
   Modal.test.tsx      — interaction tests (Esc, backdrop click, focus trap, title)
+  Onboarding.test.tsx — step flow, validation, Browse, Next, Get Started IPC call
   ScrollArea.test.tsx — render tests
   Select.test.tsx     — interaction tests (open, select, disabled)
   Separator.test.tsx  — render tests (horizontal/vertical)
@@ -78,13 +117,13 @@ src/renderer/__tests__/
   Textarea.test.tsx   — render tests (label, error, disabled)
   TextInput.test.tsx  — render tests (label, error, disabled)
   Toast.test.tsx      — interaction tests (show, auto-dismiss, manual close, variants)
+
+src/preload/
+  index.ts            — Exposes window.electron (toolkit) + partial window.api:
+                        onboarding, binary, dialog channels + onBinaryStatus,
+                        onNavigateSettings push subscriptions; stub no-ops for
+                        remaining push channels (completed in M16)
 ```
-
-Stubs (files exist but are not yet implemented):
-
-- `src/preload/index.ts` — only exposes `window.electron`; `window.api` (the typed IPC bridge) is **not** wired yet
-
-Everything else is specced in [docs/spec/milestones.md](./docs/spec/milestones.md) but not yet built.
 
 ---
 
@@ -168,7 +207,9 @@ it('migrates on version mismatch', async () => {
 
 ## IPC architecture
 
-`src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` will expose this as `window.api` via `contextBridge` (M14). Renderer code must only use `window.api` — never raw `ipcRenderer`.
+`src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` exposes a **partial** `window.api` via `contextBridge` — M8 channels only (`onboarding`, `binary`, `dialog`, plus push subscriptions `onBinaryStatus` and `onNavigateSettings`). The remaining channels are stub no-ops returning `() => {}`. The full bridge is completed in M16.
+
+Renderer code must only use `window.api` — never raw `ipcRenderer`.
 
 IPC channel naming convention: `<domain>:<action>` (e.g. `job:create`, `workspace:scan`, `binary:check`).
 

@@ -1,8 +1,11 @@
 import { is } from '@electron-toolkit/utils';
 
-import { BrowserWindow, Menu, app, nativeImage, shell } from 'electron';
+import { BrowserWindow, Menu, MenuItem, app, nativeImage, shell } from 'electron';
 import { join } from 'path';
 
+import { checkOpenCodeBinary } from './binary-check.ts';
+import { registerIpcHandlers } from './ipc-handlers.ts';
+import { storeGet, storeSet } from './store.ts';
 import { shouldAllowNewInstance, shouldHideOnClose } from './window.ts';
 
 let mainWindow: BrowserWindow | null = null;
@@ -13,10 +16,21 @@ const getIconPath = (): string =>
     ? join(__dirname, '../../resources/icon-1024.png')
     : join(process.resourcesPath, 'icon-1024.png');
 
+const runStartupChecks = async (win: BrowserWindow): Promise<void> => {
+  const result = await checkOpenCodeBinary();
+  win.webContents.send('binary:status', { found: result.found });
+};
+
 const createWindow = (): void => {
+  const savedBounds = storeGet('config').windowBounds;
+
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: savedBounds?.width ?? 900,
+    height: savedBounds?.height ?? 650,
+    x: savedBounds?.x,
+    y: savedBounds?.y,
+    minWidth: 700,
+    minHeight: 500,
     show: false,
     title: 'George Foreman',
     webPreferences: {
@@ -24,6 +38,20 @@ const createWindow = (): void => {
       sandbox: false,
     },
   });
+
+  // Persist window bounds on move/resize (debounced)
+  let boundsTimer: ReturnType<typeof setTimeout> | null = null;
+  const saveBounds = (): void => {
+    if (boundsTimer) clearTimeout(boundsTimer);
+    boundsTimer = setTimeout(() => {
+      if (!mainWindow) return;
+      const { x, y, width, height } = mainWindow.getBounds();
+      const config = storeGet('config');
+      storeSet('config', { ...config, windowBounds: { x, y, width, height } });
+    }, 500);
+  };
+  mainWindow.on('resize', saveBounds);
+  mainWindow.on('move', saveBounds);
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show();
@@ -92,6 +120,27 @@ if (shouldAllowNewInstance(hasLock) === 'quit') {
       );
     }
 
+    // Register Cmd+, shortcut via application menu
+    const appMenu = Menu.getApplicationMenu() ?? new Menu();
+    appMenu.append(
+      new MenuItem({
+        label: 'Preferences…',
+        accelerator: 'CmdOrCtrl+,',
+        click: () => mainWindow?.webContents.send('navigate:settings'),
+      }),
+    );
+    Menu.setApplicationMenu(appMenu);
+
     createWindow();
+
+    if (mainWindow) {
+      registerIpcHandlers(mainWindow);
+      // Run startup checks after the renderer is ready to receive IPC pushes
+      mainWindow.webContents.once('did-finish-load', () => {
+        if (mainWindow) {
+          runStartupChecks(mainWindow).catch(console.error);
+        }
+      });
+    }
   });
 }
