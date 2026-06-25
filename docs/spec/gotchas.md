@@ -112,3 +112,51 @@ Font CSS imports must be placed in `src/renderer/src/main.tsx` (the renderer ent
 not in `App.tsx`. Placing them in `App.tsx` causes no functional problem in Electron/Vite
 today, but the entry point is the canonical location for side-effect-only imports — it makes
 the load order explicit and avoids confusion when `App.tsx` is eventually replaced.
+
+## Renderer tests use a separate vitest config
+
+The renderer components require a browser environment (`happy-dom`) and React JSX support.
+These cannot share the main-process config (`vitest.config.ts`, which uses `environment: 'node'`).
+Use `vitest.config.web.ts` for renderer tests:
+
+```bash
+pnpm vitest run --config vitest.config.web.ts   # renderer only
+pnpm vitest run --config vitest.config.ts        # main/shared only
+```
+
+The web config uses `@vitejs/plugin-react` for JSX transforms and `globals: true` so
+`describe`/`it`/`expect`/`vi` are available without explicit imports.
+
+## `vi.useFakeTimers()` breaks `userEvent.click()` — use `shouldAdvanceTime`
+
+Calling `vi.useFakeTimers()` without options in a test that also uses `userEvent.click()` causes
+the click to hang indefinitely (userEvent uses internal delays that are intercepted by fake timers).
+
+**Fix:** pass `{ shouldAdvanceTime: true }` and use `userEvent.setup({ advanceTimers })`:
+
+```ts
+vi.useFakeTimers({ shouldAdvanceTime: true });
+const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
+await user.click(button);
+act(() => {
+  vi.advanceTimersByTime(4001);
+});
+vi.useRealTimers();
+```
+
+Never call `vi.useFakeTimers()` in `beforeEach` for tests that also use the default `userEvent`
+import — the leak pollutes all subsequent tests in the same file.
+
+## `focus-trap-react` requires a tabbable node — use `fallbackFocus`
+
+When rendering a Modal in tests (happy-dom), `focus-trap-react` throws
+`"Your focus-trap must have at least one container with at least one tabbable node"` if the
+modal content contains no naturally focusable element.
+
+**Fix:** always pass `fallbackFocus: () => document.body` in `focusTrapOptions`:
+
+```tsx
+<FocusTrap focusTrapOptions={{ allowOutsideClick: true, fallbackFocus: () => document.body }}>
+```
+
+This is safe in production too — it only activates when no other focusable node exists.

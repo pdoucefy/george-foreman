@@ -45,6 +45,39 @@ src/renderer/src/
   App.tsx             — ThemeProvider + GlobalStyle wired; placeholder Container/Title/Subtitle
                         (content is a stub, to be replaced in later milestones)
   main.tsx            — ReactDOM.createRoot + 9 @fontsource CSS imports
+  components/ui/
+    index.ts          — Barrel re-export of all UI components
+    Badge.tsx         — Badge (generic pill) + StatusPill (maps JobStatus → color token)
+    Button.tsx        — variants: primary, secondary, ghost, danger; loading + disabled states
+    CodeBlock.tsx     — CodeBlock (fenced <pre><code>) + Code (inline); styled wrappers only
+    Icon.tsx          — icon(LucideIcon) tree-shaking helper; default size=16, strokeWidth=1.5
+    ScrollArea.tsx    — styled.div with overflow:auto + scoped themed scrollbar CSS
+    Select.tsx        — @radix-ui/react-select wrapper; keyboard nav; themed
+    Separator.tsx     — horizontal/vertical divider using border.subtle
+    Spinner.tsx       — animated loading indicator with role="status"
+    Textarea.tsx      — label, placeholder, error message, disabled
+    TextInput.tsx     — label, placeholder, error message, disabled
+    fieldUtils.ts     — Shared FieldWrapper, FieldLabel, FieldError, fieldInputCss
+    Modal/
+      index.tsx       — backdrop, close on Esc + backdrop click, focus-trap-react
+    Toast/
+      index.tsx       — ToastProvider; fixed top-right container; auto-dismiss (4s default)
+      useToast.ts     — useToast() context hook; ToastContext; ToastVariant type
+
+src/renderer/__tests__/
+  setup.ts            — @testing-library/jest-dom import for happy-dom environment
+  Badge.test.tsx      — render tests (all 6 JobStatus values)
+  Button.test.tsx     — interaction tests (click, disabled, loading)
+  CodeBlock.test.tsx  — render tests
+  Icon.test.tsx       — render tests (defaults, override, tree-shaking)
+  Modal.test.tsx      — interaction tests (Esc, backdrop click, focus trap, title)
+  ScrollArea.test.tsx — render tests
+  Select.test.tsx     — interaction tests (open, select, disabled)
+  Separator.test.tsx  — render tests (horizontal/vertical)
+  Spinner.test.tsx    — render tests (size, aria-label)
+  Textarea.test.tsx   — render tests (label, error, disabled)
+  TextInput.test.tsx  — render tests (label, error, disabled)
+  Toast.test.tsx      — interaction tests (show, auto-dismiss, manual close, variants)
 ```
 
 Stubs (files exist but are not yet implemented):
@@ -77,6 +110,19 @@ See [`docs/spec/gotchas.md`](./docs/spec/gotchas.md) for the full list.
 ---
 
 ## Testing patterns
+
+### Renderer component tests
+
+Renderer tests live in `src/renderer/__tests__/` and run with `vitest.config.web.ts`:
+
+```bash
+pnpm vitest run --config vitest.config.web.ts
+```
+
+The config uses `environment: 'happy-dom'`, `globals: true`, and `@vitejs/plugin-react` for JSX.
+Setup file: `src/renderer/__tests__/setup.ts` (imports `@testing-library/jest-dom`).
+
+Each test wraps the component in `<ThemeProvider theme={theme}>` — no global provider exists in tests.
 
 ### Mocking `electron-store` (required for `store.ts` tests)
 

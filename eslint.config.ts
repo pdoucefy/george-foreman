@@ -32,6 +32,7 @@ export default defineConfig(
       // @typescript-eslint
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/default-param-last': 'warn',
+      '@typescript-eslint/consistent-type-definitions': ['warn', 'type'],
       '@typescript-eslint/no-empty-interface': ['warn', { allowSingleExtends: true }],
       '@typescript-eslint/no-empty-object-type': [
         'warn',
@@ -251,10 +252,41 @@ export default defineConfig(
     rules: { camelcase: 'off' },
   },
 
+  // Declaration-merging files must use interface — type cannot augment existing declarations
+  {
+    files: ['src/renderer/src/styled.d.ts', 'src/shared/types/ipc.ts'],
+    rules: { '@typescript-eslint/consistent-type-definitions': 'off' },
+  },
+
   // Test files — relax rules that conflict with test patterns
   // class-methods-use-this: mock classes legitimately close over external state (vi.hoisted refs)
   {
-    files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts'],
-    rules: { 'class-methods-use-this': 'off' },
+    files: [
+      'src/**/__tests__/**/*.ts',
+      'src/**/__tests__/**/*.tsx',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+    ],
+    languageOptions: {
+      globals: {
+        // vitest globals (mirrors globals: true in vitest.config.web.ts)
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        // React is in scope via @vitejs/plugin-react JSX transform
+        React: 'readonly',
+      },
+    },
+    rules: {
+      'class-methods-use-this': 'off',
+      // Test helper components don't need button type attributes
+      'react/button-has-type': 'off',
+    },
   },
 );
