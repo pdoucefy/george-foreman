@@ -1,49 +1,24 @@
 import { is } from '@electron-toolkit/utils';
 
-import { BrowserWindow, Menu, Tray, app, nativeImage, shell } from 'electron';
+import { BrowserWindow, Menu, app, nativeImage, shell } from 'electron';
 import { join } from 'path';
 
-import { createTrayIconDataURL } from './tray-icon.ts';
 import { shouldAllowNewInstance, shouldHideOnClose } from './window.ts';
 
 let mainWindow: BrowserWindow | null = null;
-let tray: Tray | null = null;
 let isQuitting = false;
 
-const updateTrayMenu = (): void => {
-  if (!tray) return;
-
-  const menu = Menu.buildFromTemplate([
-    {
-      label: 'Show',
-      click: () => {
-        mainWindow?.show();
-        mainWindow?.focus();
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        isQuitting = true;
-        mainWindow?.destroy(); // bypass 'close' event to ensure quit always works
-        app.quit();
-      },
-    },
-  ]);
-
-  tray.setContextMenu(menu);
-};
+const getIconPath = (): string =>
+  is.dev
+    ? join(__dirname, '../../resources/icon-1024.png')
+    : join(process.resourcesPath, 'icon-1024.png');
 
 const createWindow = (): void => {
-  const icon = nativeImage.createFromDataURL(createTrayIconDataURL());
-
   mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
     title: 'George Foreman',
-    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -52,6 +27,7 @@ const createWindow = (): void => {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show();
+    if (app.dock) app.dock.show();
   });
 
   mainWindow.on('close', (event) => {
@@ -59,6 +35,7 @@ const createWindow = (): void => {
     if (action === 'hide') {
       event.preventDefault();
       mainWindow?.hide();
+      if (app.dock) app.dock.hide();
     }
   });
 
@@ -74,16 +51,9 @@ const createWindow = (): void => {
   }
 };
 
-const createTray = (): void => {
-  const icon = nativeImage.createFromDataURL(createTrayIconDataURL());
-  tray = new Tray(icon);
-  tray.setToolTip('George Foreman');
-  updateTrayMenu();
-};
-
-// Keep the app alive when all windows are closed (tray-resident app)
+// Keep the app alive when all windows are closed (Dock-resident app)
 app.on('window-all-closed', () => {
-  // Do not quit — the app lives in the tray
+  // Do not quit — the app lives in the Dock
 });
 
 // Cmd+Q and other system quit triggers should exit the app
@@ -91,7 +61,7 @@ app.on('before-quit', () => {
   isQuitting = true;
 });
 
-// Enforce single instance — quit immediately if another instance is running
+// Enforce single instance — focus existing window if another instance is launched
 const hasLock = app.requestSingleInstanceLock();
 if (shouldAllowNewInstance(hasLock) === 'quit') {
   app.quit();
@@ -99,23 +69,29 @@ if (shouldAllowNewInstance(hasLock) === 'quit') {
   app.on('second-instance', () => {
     mainWindow?.show();
     mainWindow?.focus();
+    if (app.dock) app.dock.show();
   });
 
   app.whenReady().then(() => {
-    createWindow();
-    createTray();
-
-    // Set dock icon (macOS)
     if (app.dock) {
-      app.dock.setIcon(nativeImage.createFromDataURL(createTrayIconDataURL()));
+      const icon = nativeImage.createFromPath(getIconPath());
+      if (!icon.isEmpty()) app.dock.setIcon(icon);
+
+      app.dock.setMenu(
+        Menu.buildFromTemplate([
+          {
+            label: 'Settings',
+            click: () => {
+              mainWindow?.show();
+              mainWindow?.focus();
+              if (app.dock) app.dock.show();
+              mainWindow?.webContents.send('navigate:settings');
+            },
+          },
+        ]),
+      );
     }
 
-    tray?.on('click', () => {
-      if (mainWindow?.isVisible()) {
-        mainWindow.focus();
-      } else {
-        mainWindow?.show();
-      }
-    });
+    createWindow();
   });
 }

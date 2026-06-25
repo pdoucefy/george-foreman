@@ -53,8 +53,7 @@ The user defines multi-step workflows in YAML files. When a "job" is created, th
 4. Monitors progress in real time via OpenCode's SSE event stream
 5. Notifies the user when a job needs their attention (permission request or question)
 
-The app lives in the macOS menu bar as a tray icon. The window hides on close; the only way to
-fully quit is via the tray context menu.
+The app lives in the macOS Dock. The window hides on close; click the Dock icon to reopen it.
 
 ---
 
@@ -98,7 +97,6 @@ george-foreman/
 │   ├── main/
 │   │   ├── __tests__/         # Vitest tests — one file per module
 │   │   ├── index.ts           # App entry point — thin wiring only
-│   │   ├── tray-icon.ts       # Pure: tray icon data URL generator
 │   │   ├── window.ts          # Pure: window lifecycle helpers
 │   │   ├── job-manager.ts     # Job lifecycle (create, monitor, stop, restore)
 │   │   ├── opencode.ts        # OpenCode HTTP API client
@@ -136,8 +134,14 @@ george-foreman/
 │   │       │   └── Settings/
 │   │       └── __tests__/     # React Testing Library tests
 │   └── shared/
-│       ├── types.ts           # Shared domain types
-│       └── ipc.ts             # IPC channel names + request/response types
+│       └── types/             # Shared domain types + IPC contract (barrel: types/index.ts)
+│           ├── index.ts       # Re-exports all modules below
+│           ├── ipc.ts         # ElectronAPI (window.api shape) + SessionMessage + MessagePart
+│           ├── job.ts         # Job, JobStatus, TaskState, PendingPermission, JobCreateParams
+│           ├── repo.ts        # Repo schema
+│           ├── sse.ts         # GlobalEvent, Permission, OrchestratorEvent, SSE event types
+│           ├── store.ts       # StoreSchema, Config, WindowBounds schemas
+│           └── workflow.ts    # Workflow, WorkflowTask, WorkflowSource, WorkflowArgument
 ├── workflows/                 # Built-in workflow YAMLs (ships with app)
 │   ├── workflow-schema.json   # JSON Schema for workflow YAML validation (VS Code + editors)
 │   └── example.yml
@@ -325,7 +329,6 @@ immediately and the first instance's window is focused (`mainWindow.show(); main
 ```text
 app.whenReady()
   → createWindow()          — create BrowserWindow (hidden initially)
-  → createTray()            — create Tray with programmatic flame icon
   → runStartupChecks()
       ├── checkOpenCodeBinary()
       │     ├── found     → clear any binary-missing state; attempt to resume blocked jobs
@@ -345,16 +348,16 @@ app.whenReady()
 
 ### Window behavior
 
-- **Window hide on close:** `close` event intercepted; if `!isQuitting`, `event.preventDefault()` + `mainWindow.hide()`
-- **Tray left-click:** toggle window — if hidden: `show() + focus()`; if visible: `hide()`
-- **Tray right-click:** context menu — `Show` | `Settings` | _(separator)_ | `Quit`
+- **Window hide on close:** `close` event intercepted; if `!isQuitting`, `event.preventDefault()` + `mainWindow.hide()` + `app.dock.hide()`
+- **Dock click:** shows and focuses the window (`app.dock.show()` + `mainWindow.show()` + `mainWindow.focus()`) — standard macOS behavior, no handler needed
 - **`Cmd+,`:** opens Settings — registered via `app.applicationMenu` accelerator; sends `navigate:settings` IPC to renderer
-- **Quit:** only via tray menu `Quit`. Sets `isQuitting = true` before `app.quit()`
+- **Quit:** `Cmd+Q` or the app menu. Sets `isQuitting = true` before `app.quit()`
 - **`app.on('before-quit')`:** sets `isQuitting = true`
-- **`app.on('window-all-closed')`:** no-op (tray-resident app, never quit on window close)
+- **`app.on('window-all-closed')`:** no-op (Dock-resident app, never quit on window close)
 - **Window dimensions:** 900×650 initial; 700×500 minimum; freely resizable
 - **Window position:** persisted in `electron-store` (`config.windowBounds`); restored on next launch
 - **Dock icon:** shown while window is visible (`app.dock.show()`); hidden when window hides (`app.dock.hide()`)
+- **Dock badge:** `app.dock.setBadge(String(count))` where count = `needs_attention` jobs (empty string when 0); updated on every job status change
 - **Activation policy:** default `'regular'` — window appears in Cmd+Tab and Dock when visible. Do **not** call `app.setActivationPolicy('accessory')`. The Dock icon is managed manually via `app.dock.show()` / `app.dock.hide()` (see above).
 
 ### First launch detection
@@ -391,8 +394,8 @@ Two-step setup presented as a full-screen overlay before the main UI.
 
 ### Dismiss behavior
 
-- Closing the onboarding window (Cmd+W, red X, Esc) → `mainWindow.hide()` (hides to tray)
-- On next "Show" from tray → onboarding is shown again (not the main UI)
+- Closing the onboarding window (Cmd+W, red X, Esc) → `mainWindow.hide()` (hides to Dock)
+- On next Dock click → onboarding is shown again (not the main UI)
 - There is no way to skip onboarding
 
 ### Completion
@@ -411,10 +414,9 @@ On "Get Started" (step 2, valid):
 Accessible from:
 
 - **`Cmd+,`** — standard macOS keyboard shortcut (registered as a global menu accelerator)
-- Tray context menu → "Settings"
 - Settings gear icon (⚙) in the app top bar
 
-All three send the `navigate:settings` IPC push from main to renderer.
+Both send the `navigate:settings` IPC push from main to renderer.
 
 `Cmd+,` is implemented via `app.applicationMenu` with a `MenuItem` entry:
 
@@ -636,7 +638,7 @@ fetches and caches it automatically. The built-in `workflows/example.yml` includ
 > **Hosting requirement:** the schema URL only works once the `george-foreman` repo is public
 > on GitHub and `workflows/workflow-schema.json` is committed to `main`. No extra deployment
 > steps are needed — GitHub serves raw file content automatically. This is handled as part of
-> **M19** (making the repo public before setting up CI). During development (before the repo
+> **M2** (making the repo public + CI pipeline). During development (before the repo
 > is public), use a local relative path instead:
 >
 > ```yaml
@@ -1722,9 +1724,9 @@ Defined in `src/shared/ipc.ts`. Implemented in `src/preload/index.ts` via `conte
 // Workspace rescan result
 'workspace:updated'   → (repos: Repo[]) => void
 
-// Navigation (from notification click or tray menu)
+// Navigation (from notification click or Dock)
 'navigate:job'        → (jobId: string) => void
-'navigate:settings'   → () => void    // Tray "Settings" menu item → show Settings panel
+'navigate:settings'   → () => void    // Settings gear / Cmd+, → show Settings panel
 ```
 
 ### Types in `src/shared/types.ts`
@@ -1796,17 +1798,11 @@ App.tsx
 └──────────────────────────┴──────────────────────────────────────────┘
 ```
 
-### Tray
+### Dock
 
-- Icon: programmatic 22×22 flame PNG via `nativeImage.createFromDataURL`
-- Badge: `tray.setTitle(count > 0 ? String(count) : '')` where count = `needs_attention` jobs
+- Badge: `app.dock.setBadge(String(count))` where count = `needs_attention` jobs (empty string when 0)
   - Updated on every job status change; always current regardless of window visibility
-- Left-click: toggle window visibility
-- Right-click context menu:
-  - "Show" → `mainWindow.show(); mainWindow.focus()`
-  - "Settings" → show Settings panel
-  - _(separator)_
-  - "Quit" → `app.quit()`
+- Click: shows and focuses the window (standard macOS Dock behavior; no explicit handler needed)
 
 ### Nav bar
 
@@ -2140,9 +2136,9 @@ For both notification types:
 2. Main process sends `navigate:job` IPC with the `jobId`
 3. Renderer navigates to Dashboard, selects the job, opens session panel
 
-### Tray badge
+### Dock badge
 
-- `tray.setTitle(String(count))` where count = `needs_attention` jobs (empty string when 0)
+- `app.dock.setBadge(String(count))` where count = `needs_attention` jobs (empty string when 0)
 - Recalculated on every job status change
 - Always current regardless of window focus or visibility
 
@@ -2193,14 +2189,15 @@ For both notification types:
 
 ## 22. Coding Patterns & Conventions
 
+> **Maintenance rule:** Update `AGENTS.md` and `SPEC.md` whenever a milestone is completed, files are added or removed, or a new gotcha is discovered.
+
 ### Module design
 
 - **Pure functions for testability** — any logic that doesn't require Electron APIs is extracted
   into a dedicated module and tested independently of Electron
-- **`index.ts` is thin wiring only** — creates Electron app/window/tray objects, wires event
+- **`index.ts` is thin wiring only** — creates Electron app/window objects, wires event
   listeners, calls pure helper modules. No business logic.
-- Established pattern from M1: `tray-icon.ts` (pure) and `window.ts` (pure) tested without
-  mocking Electron
+- Established pattern from M1: `window.ts` (pure) tested without mocking Electron
 
 ### File naming & organization
 
@@ -2439,7 +2436,7 @@ type ElectronAPI = {
   onBinaryStatus: (cb: (params: { found: boolean }) => void) => () => void;
   onWorkspaceUpdated: (cb: (repos: Repo[]) => void) => () => void;
   onNavigateJob: (cb: (jobId: string) => void) => () => void;
-  onNavigateSettings: (cb: () => void) => () => void; // Tray "Settings" → show Settings panel
+  onNavigateSettings: (cb: () => void) => () => void; // Settings gear / Cmd+, → show Settings panel
 };
 
 declare global {
@@ -2508,7 +2505,6 @@ import '@testing-library/jest-dom';
 
 | Module                | Key test cases                                                                                                                                                         |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tray-icon.ts`        | _(already done)_ PNG magic bytes, data URL format, icon size                                                                                                           |
 | `window.ts`           | _(already done)_ hide/quit decision, single-instance decision                                                                                                          |
 | `binary-check.ts`     | `opencode` found on PATH; not found; path returned correctly                                                                                                           |
 | `workspace.ts`        | `.git` dir included; `.git` file (worktree) excluded; symlink included; missing folder returns empty; default branch detection from `symbolic-ref`; fallback to `main` |
@@ -2761,7 +2757,7 @@ approach is already specced and handles chunk-boundary splitting correctly.
 
 ### macOS only — no cross-platform guards needed
 
-This app targets macOS exclusively. `app.dock`, `Tray.setTitle()`, macOS notifications, and
+This app targets macOS exclusively. `app.dock`, `app.dock.setBadge()`, macOS notifications, and
 `nativeImage` are used without platform guards.
 
 ### `electron-store` is a process-wide singleton
@@ -2790,13 +2786,13 @@ fallback.
 
 Implement in this order. Mark `[x]` when complete.
 
-- [x] **M1.** Electron shell + tray (programmatic flame icon) + window hide-on-close + right-click tray menu (Show / Quit) + single-instance lock
+- [x] **M1.** Electron shell + window hide-on-close + Dock badge + single-instance lock
 - [x] **M2.** Make repo public on GitHub (enables the `workflow-schema.json` public URL) + CI pipeline: `.github/workflows/ci.yml`
 - [x] **M3.** Local packaging: `electron-builder.yml` config (arm64 only) + `pnpm package` script producing unsigned `.dmg`
 - [x] **M4.** `electron-store` setup: schema v1, all typed accessors, schema-version migration logic
-- [ ] **M5.** `AGENTS.md` + `CLAUDE.md` symlink: agent-oriented codebase context file (project overview, key commands, conventions, milestone status, known gotchas); content defined at implementation time
-- [ ] **M7.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
-- [ ] **M8.** UI component library (`src/renderer/src/components/ui/`):
+- [x] **M5.** `AGENTS.md` + `CLAUDE.md` symlink: agent-oriented codebase context file (project overview, key commands, conventions, milestone status, known gotchas); split `SPEC.md` into per-section files under `docs/spec/` with a short index
+- [ ] **M6.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
+- [ ] **M7.** UI component library (`src/renderer/src/components/ui/`):
   - `Button` — variants: primary, secondary, ghost, danger; loading spinner state; disabled state
   - `TextInput` — label, placeholder, error message, disabled
   - `Textarea` — same as TextInput
@@ -2810,25 +2806,25 @@ Implement in this order. Mark `[x]` when complete.
   - `CodeBlock` + `Code` (inline) — for markdown rendering in chat thread
   - `Icon` — thin re-export of `lucide-react` with consistent default `size={16}` and `strokeWidth={1.5}`
     All components use theme tokens exclusively. No inline styles. Each has a test in `src/renderer/__tests__/`.
-- [ ] **M9.** First-launch onboarding (2-step: workspace folder + GitHub handle) + `opencode` binary startup check + persistent error banner
+- [ ] **M8.** First-launch onboarding (2-step: workspace folder + GitHub handle) + `opencode` binary startup check + persistent error banner
   - **M4 store verification:** after completing onboarding, quit and relaunch the app — confirm it goes straight to the main UI (onboarding does not reappear). This proves the store correctly persisted `workspaceFolder` and `githubHandle`.
-- [ ] **M10.** Workspace scanning (`workspace.ts`): `.git` dir detection, symlink support, default branch detection
-- [ ] **M11.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` substitution + validation + create `workflows/workflow-schema.json`
-- [ ] **M12.** Git worktree management (`worktree.ts`): create, delete, path generation, pre-creation checks, `.george-foreman/copy-files` file copying
-- [ ] **M13.** OpenCode process management (`opencode-process.ts`): spawn, port discovery, health polling, crash handling (one auto-restart, then fail), process log capture (ring buffer)
-- [ ] **M14.** OpenCode HTTP API client (`opencode.ts`): all endpoints, retry logic, SSE client (Node.js streaming), reconnect + status poll
-- [ ] **M15.** Job creation flow — UI only (steps 1–4): repo select, workflow select, argument input, branch name preview + confirm + advanced base-branch selector
-- [ ] **M16.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from §10), crash handling, startup restore + auto-resume
+- [ ] **M9.** Workspace scanning (`workspace.ts`): `.git` dir detection, symlink support, default branch detection
+- [ ] **M10.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` substitution + validation + create `workflows/workflow-schema.json`
+- [ ] **M11.** Git worktree management (`worktree.ts`): create, delete, path generation, pre-creation checks, `.george-foreman/copy-files` file copying
+- [ ] **M12.** OpenCode process management (`opencode-process.ts`): spawn, port discovery, health polling, crash handling (one auto-restart, then fail), process log capture (ring buffer)
+- [ ] **M13.** OpenCode HTTP API client (`opencode.ts`): all endpoints, retry logic, SSE client (Node.js streaming), reconnect + status poll
+- [ ] **M14.** Job creation flow — UI only (steps 1–4): repo select, workflow select, argument input, branch name preview + confirm + advanced base-branch selector
+- [ ] **M15.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from §10), crash handling, startup restore + auto-resume
   - **M4 store verification:** after a job reaches `running`, quit and relaunch the app — confirm the job reappears with its previous status and task state. This proves the store correctly persisted and restored the job record.
-- [ ] **M17.** IPC bridge (`src/shared/ipc.ts`, `src/shared/types.ts`, `src/preload/index.ts`): all channels, fully typed `window.api` object; Zustand store skeleton (`src/renderer/src/store.ts`)
-- [ ] **M18.** `DashboardTab` + `Layout`: repo grouping, job cards (status pill, progress bar, elapsed time), split-panel shell, session panel skeleton
-- [ ] **M19.** Session panel: two-column layout, task list with status icons + background tints, expandable subagent rows (lazy-load messages), chat thread (auto-scroll, scroll-lock)
-- [ ] **M20.** Input area: permission mode (3 buttons: Reject / Allow Once / Allow Always) + persistent free-text input (always shown when running; "Waiting for your input…" hint on session.idle)
-- [ ] **M21.** Attention detection: tray badge update + macOS notifications (isFocused gate) + notification click → navigate to job
-- [ ] **M22.** `ArchiveTab`: status filter tabs, search, virtual scrolling, archive/unarchive actions, worktree delete (with two-step confirmation)
-- [ ] **M23.** Settings UI: all four fields, Browse dialogs, Rescan button, auto-save, back navigation, `Cmd+,` shortcut
-- [ ] **M24.** End-to-end validation: create a built-in workflow YAML for the george-foreman repo itself (`workflows/implement-milestone.yml` or similar); create a workflow for a chosen user repo (`.george-foreman/workflows/`); write an automated integration test that exercises the full job lifecycle (create → worktree → spawn → health → orchestrator → SSE → complete); manually run the app end-to-end against a real repo and confirm a job runs to completion
-- [ ] **M25.** Release prep: `pnpm release patch|minor|major` script (`scripts/release.ts`) that guards on `main` branch + clean working tree, bumps `package.json` version, commits, creates a `vX.Y.Z` tag, and pushes both to origin; CI packaging pipeline (`.github/workflows/release.yml`) triggered on `v*` tags — builds arm64 `.dmg` via `pnpm package` and attaches it as a GitHub Release asset; verify all bundle assets (fonts, workflows, icon) are included in the DMG
+- [ ] **M16.** IPC bridge (`src/shared/ipc.ts`, `src/shared/types.ts`, `src/preload/index.ts`): all channels, fully typed `window.api` object; Zustand store skeleton (`src/renderer/src/store.ts`)
+- [ ] **M17.** `DashboardTab` + `Layout`: repo grouping, job cards (status pill, progress bar, elapsed time), split-panel shell, session panel skeleton
+- [ ] **M18.** Session panel: two-column layout, task list with status icons + background tints, expandable subagent rows (lazy-load messages), chat thread (auto-scroll, scroll-lock)
+- [ ] **M19.** Input area: permission mode (3 buttons: Reject / Allow Once / Allow Always) + persistent free-text input (always shown when running; "Waiting for your input…" hint on session.idle)
+- [ ] **M20.** Attention detection: Dock badge update + macOS notifications (isFocused gate) + notification click → navigate to job
+- [ ] **M21.** `ArchiveTab`: status filter tabs, search, virtual scrolling, archive/unarchive actions, worktree delete (with two-step confirmation)
+- [ ] **M22.** Settings UI: all four fields, Browse dialogs, Rescan button, auto-save, back navigation, `Cmd+,` shortcut
+- [ ] **M23.** End-to-end validation: create a built-in workflow YAML for the george-foreman repo itself (`workflows/implement-milestone.yml` or similar); create a workflow for a chosen user repo (`.george-foreman/workflows/`); write an automated integration test that exercises the full job lifecycle (create → worktree → spawn → health → orchestrator → SSE → complete); manually run the app end-to-end against a real repo and confirm a job runs to completion
+- [ ] **M24.** Release prep: `pnpm release patch|minor|major` script (`scripts/release.ts`) that guards on `main` branch + clean working tree, bumps `package.json` version, commits, creates a `vX.Y.Z` tag, and pushes both to origin; CI packaging pipeline (`.github/workflows/release.yml`) triggered on `v*` tags — builds arm64 `.dmg` via `pnpm package` and attaches it as a GitHub Release asset; verify all bundle assets (fonts, workflows, icon) are included in the DMG
 
 ---
 
@@ -2874,7 +2870,7 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   workflow YAML files, failed file copies, skipped `.george-foreman/copy-files` globs,
   `console.warn` calls throughout) are silent to the user and only visible in dev tools or
   stdout. Future work: a dedicated "Diagnostics" or "Warnings" panel (accessible from Settings
-  or a tray menu item) that surfaces:
+  or a Settings link) that surfaces:
   - Workflow files that failed to parse (with file path + parse error)
   - Files that failed to copy into a worktree (with glob pattern + error)
   - Any non-fatal startup warnings (e.g. user workflows folder not found)
@@ -2888,7 +2884,7 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   `history.pushState` / `popstate` implementation integrated with the Zustand store.
 - **x64 / universal binary support** — the current `.dmg` targets `arm64` (Apple Silicon) only.
   To distribute to Intel Mac users, add `x64` (or `universal`) to the `arch` list in
-  `electron-builder.yml` and update the M22 CI packaging step accordingly.
+  `electron-builder.yml` and update the M24 release/packaging step accordingly.
 - **macOS code signing + notarization + distribution** — required only if distributing the app
   to other users' Macs. Needs an Apple Developer Program membership ($99/year). The chain:
   Developer ID certificate (`CSC_LINK` + `CSC_KEY_PASSWORD`) → sign the `.app` →
@@ -2897,10 +2893,11 @@ Not in scope for the current build. Captured here to avoid re-litigating.
   config when needed. Not required for personal use — unsigned local builds work fine on your
   own machine.
 - **Windows / Linux support** — the app currently targets macOS exclusively. APIs used without
-  cross-platform guards: `app.dock`, `Tray.setTitle()` (badge), macOS notifications, and
+  cross-platform guards: `app.dock`, `app.dock.setBadge()`, macOS notifications, and
   `nativeImage`. Future work: audit all macOS-specific API calls, add platform guards, replace
-  or polyfill where needed (e.g. Windows tray badge via overlay icon, Linux notifications via
+  or polyfill where needed (e.g. Windows taskbar badge via overlay icon, Linux notifications via
   `libnotify`). Would also require Windows/Linux CI runners and packaging targets in
   `electron-builder` config.
 - **Mode Selection** - Allow users to select the starting agent mode (ie build/plan) when creating a new job. This would require adding a new field to the workflow YAML schema, updating the UI to allow users to select the mode, and passing this information to the OpenCode orchestrator when creating the job.
-- **Unified icon source** — `tray-icon.ts` currently uses a hardcoded 22×22 base64 PNG independent of `resources/icon.icns`. A future improvement would load the tray icon from `resources/icon.icns` at runtime (Electron picks the right size automatically), making `pnpm generate-icon` the single source of truth for all icon surfaces. Trade-off: adds file I/O at startup and complicates path resolution in dev vs production. Revisit if the tray icon needs dynamic variants or the two icons diverge significantly.
+- **Token usage tracking** — track and display token consumption per job and over time. OpenCode SSE events include token counts in message metadata; accumulate these per job and expose aggregate stats (total tokens, cost estimate, breakdown by job/workflow/repo) in a dedicated panel or Settings page. Useful for understanding cost at scale and identifying expensive workflows.
+- **Dock icon flashes on startup and quit** — `app.dock.setIcon()` is called in `app.whenReady()` but macOS briefly shows the default Electron icon before and after the custom icon is applied. Possible approaches: embed the icon directly in the app bundle's `Info.plist` via `electron-builder` `extraInfo` config, or explore whether setting the icon earlier (before `app.whenReady()`) is possible in a future Electron version.

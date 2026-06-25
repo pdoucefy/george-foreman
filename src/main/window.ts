@@ -6,7 +6,7 @@
  * Determines what should happen when the window receives a 'close' event.
  *
  * @param isQuitting - true when the app is in the process of quitting
- *                     (e.g. user clicked Quit in the tray menu)
+ *                     (e.g. user pressed Cmd+Q)
  * @returns 'hide'  → prevent the close and hide the window instead
  *          'quit'  → allow the close to proceed and quit the app
  */
