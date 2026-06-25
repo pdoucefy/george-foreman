@@ -1,19 +1,8 @@
 import React from 'react';
-import styled, { createGlobalStyle } from 'styled-components';
+import styled, { ThemeProvider } from 'styled-components';
 
-const GlobalStyle = createGlobalStyle`
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #1a1a1a;
-    color: #e0e0e0;
-  }
-`;
+import { GlobalStyle } from './GlobalStyle.ts';
+import { theme } from './theme.ts';
 
 const Container = styled.div`
   display: flex;
@@ -35,13 +24,13 @@ const Subtitle = styled.p`
 `;
 
 const App = (): React.JSX.Element => (
-  <>
+  <ThemeProvider theme={theme}>
     <GlobalStyle />
     <Container>
       <Title>George Foreman</Title>
       <Subtitle>AI Agent Workflow Manager</Subtitle>
     </Container>
-  </>
+  </ThemeProvider>
 );
 
 export { App };

@@ -35,13 +35,21 @@ src/main/
   __tests__/
     store.test.ts     — 18 tests; uses vi.hoisted mock pattern (see Testing Patterns below)
     window.test.ts    — hide/quit decision, single-instance decision
+
+src/renderer/src/
+  theme.ts            — Design token object (bg, accent, status, text, border, space, font,
+                        fontWeight, fontSize, radius, shadow) + Theme type
+  GlobalStyle.ts      — createGlobalStyle: box-sizing reset, body background/color/font,
+                        custom scrollbars (webkit + scrollbar-width), ::selection highlight
+  styled.d.ts         — DefaultTheme augmentation: interface DefaultTheme extends Theme {}
+  App.tsx             — ThemeProvider + GlobalStyle wired; placeholder Container/Title/Subtitle
+                        (content is a stub, to be replaced in later milestones)
+  main.tsx            — ReactDOM.createRoot + 9 @fontsource CSS imports
 ```
 
 Stubs (files exist but are not yet implemented):
 
 - `src/preload/index.ts` — only exposes `window.electron`; `window.api` (the typed IPC bridge) is **not** wired yet
-- `src/renderer/src/App.tsx` — centered title only; no ThemeProvider, no IPC, no font imports
-- `src/renderer/src/main.tsx` — bare `ReactDOM.createRoot`; no `@fontsource` imports yet
 
 Everything else is specced in [docs/spec/milestones.md](./docs/spec/milestones.md) but not yet built.
 

@@ -87,3 +87,28 @@ from `resources/icon-1024.png`. The `.icns` file in `resources/` is only used by
 
 `app.dock.setIcon()` is called in `app.whenReady()` but macOS briefly shows the default
 Electron icon before and after the app sets its own. Known limitation — see [§29](./backlog.md).
+
+## `DefaultTheme` augmentation is required for styled-components theme typing
+
+styled-components v6 does not automatically pick up the theme type. You must declare the
+module augmentation in `src/renderer/src/styled.d.ts`:
+
+```ts
+import type { Theme } from './theme';
+
+declare module 'styled-components' {
+  interface DefaultTheme extends Theme {}
+}
+```
+
+Without this, `${({ theme }) => theme.accent.primary}` in any styled component or
+`createGlobalStyle` will type `theme` as `DefaultTheme = {}` — all token accesses silently
+become `any`. The file must be included in `tsconfig.web.json`'s `include` glob (it is, via
+`src/renderer/src/**/*`).
+
+## `@fontsource` imports belong in `main.tsx`, not `App.tsx`
+
+Font CSS imports must be placed in `src/renderer/src/main.tsx` (the renderer entry point),
+not in `App.tsx`. Placing them in `App.tsx` causes no functional problem in Electron/Vite
+today, but the entry point is the canonical location for side-effect-only imports — it makes
+the load order explicit and avoids confusion when `App.tsx` is eventually replaced.

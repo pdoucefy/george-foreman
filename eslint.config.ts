@@ -32,8 +32,11 @@ export default defineConfig(
       // @typescript-eslint
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/default-param-last': 'warn',
-      '@typescript-eslint/no-empty-interface': 'warn',
-      '@typescript-eslint/no-empty-object-type': 'warn',
+      '@typescript-eslint/no-empty-interface': ['warn', { allowSingleExtends: true }],
+      '@typescript-eslint/no-empty-object-type': [
+        'warn',
+        { allowInterfaces: 'with-single-extends' },
+      ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-shadow': 'warn',
       '@typescript-eslint/no-unnecessary-type-constraint': 'warn',
@@ -134,7 +137,7 @@ export default defineConfig(
       'prefer-regex-literals': 'warn',
       'prefer-template': 'warn',
       radix: 'warn',
-      'spaced-comment': 'warn',
+      'spaced-comment': ['warn', 'always', { markers: ['/'] }],
       yoda: 'warn',
 
       // Disabled — handled by @typescript-eslint equivalents

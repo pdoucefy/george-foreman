@@ -9,7 +9,7 @@ Implement in this order.
 - [x] **M3.** Local packaging: `electron-builder.yml` config (arm64 only) + `pnpm package` script producing unsigned `.dmg`
 - [x] **M4.** `electron-store` setup: schema v1, all typed accessors, schema-version migration logic
 - [x] **M5.** `AGENTS.md` + `CLAUDE.md` symlink: agent-oriented codebase context file (project overview, key commands, conventions, milestone status, known gotchas); split `SPEC.md` into per-section files under `docs/spec/` with a short index
-- [ ] **M6.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
+- [x] **M6.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
 - [ ] **M7.** UI component library (`src/renderer/src/components/ui/`):
   - `Button` — variants: primary, secondary, ghost, danger; loading spinner state; disabled state
   - `TextInput` — label, placeholder, error message, disabled
