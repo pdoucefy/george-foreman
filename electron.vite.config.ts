@@ -8,6 +8,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: {
+        '@shared/types': resolve('src/shared/types/index.ts'),
         '@shared': resolve('src/shared'),
       },
     },
@@ -19,6 +20,7 @@ export default defineConfig({
     resolve: {
       alias: {
         '@renderer': resolve('src/renderer/src'),
+        '@shared/types': resolve('src/shared/types/index.ts'),
         '@shared': resolve('src/shared'),
       },
     },

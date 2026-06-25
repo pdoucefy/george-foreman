@@ -15,7 +15,8 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@shared/types": ["./src/shared/types/index.ts"]
     }
   }
 }

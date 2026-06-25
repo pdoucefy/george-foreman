@@ -241,4 +241,17 @@ export default defineConfig(
 
   // Prettier — must be last to disable conflicting formatting rules
   prettierConfig,
+
+  // src/shared/types/sse.ts uses snake_case object keys to match the OpenCode wire protocol
+  {
+    files: ['src/shared/types/sse.ts'],
+    rules: { camelcase: 'off' },
+  },
+
+  // Test files — relax rules that conflict with test patterns
+  // class-methods-use-this: mock classes legitimately close over external state (vi.hoisted refs)
+  {
+    files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts'],
+    rules: { 'class-methods-use-this': 'off' },
+  },
 );

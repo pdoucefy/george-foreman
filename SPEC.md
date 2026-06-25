@@ -1532,12 +1532,6 @@ No status change required — job stays `running`.
 
 ## 17. Job State Persistence (electron-store)
 
-### Installation
-
-```bash
-pnpm add electron-store
-```
-
 ### Complete store schema
 
 ```ts
@@ -2671,11 +2665,9 @@ jobs:
 
 ## 26. Dependencies
 
-### Production dependencies to add
+### Production dependencies
 
-```bash
-pnpm add electron-store js-yaml zustand zod lucide-react
-```
+All production dependencies have been installed. The table below documents what each package is for:
 
 | Package          | Version constraint | Purpose                             |
 | ---------------- | ------------------ | ----------------------------------- |
@@ -2801,7 +2793,7 @@ Implement in this order. Mark `[x]` when complete.
 - [x] **M1.** Electron shell + tray (programmatic flame icon) + window hide-on-close + right-click tray menu (Show / Quit) + single-instance lock
 - [x] **M2.** Make repo public on GitHub (enables the `workflow-schema.json` public URL) + CI pipeline: `.github/workflows/ci.yml`
 - [x] **M3.** Local packaging: `electron-builder.yml` config (arm64 only) + `pnpm package` script producing unsigned `.dmg`
-- [ ] **M4.** `electron-store` setup: schema v1, all typed accessors, schema-version migration logic
+- [x] **M4.** `electron-store` setup: schema v1, all typed accessors, schema-version migration logic
 - [ ] **M5.** `AGENTS.md` + `CLAUDE.md` symlink: agent-oriented codebase context file (project overview, key commands, conventions, milestone status, known gotchas); content defined at implementation time
 - [ ] **M7.** Design system: `theme.ts` tokens (colors, fonts, spacing), `GlobalStyle.ts`, font imports (`@fontsource`) — applied from this milestone onward
 - [ ] **M8.** UI component library (`src/renderer/src/components/ui/`):
@@ -2819,6 +2811,7 @@ Implement in this order. Mark `[x]` when complete.
   - `Icon` — thin re-export of `lucide-react` with consistent default `size={16}` and `strokeWidth={1.5}`
     All components use theme tokens exclusively. No inline styles. Each has a test in `src/renderer/__tests__/`.
 - [ ] **M9.** First-launch onboarding (2-step: workspace folder + GitHub handle) + `opencode` binary startup check + persistent error banner
+  - **M4 store verification:** after completing onboarding, quit and relaunch the app — confirm it goes straight to the main UI (onboarding does not reappear). This proves the store correctly persisted `workspaceFolder` and `githubHandle`.
 - [ ] **M10.** Workspace scanning (`workspace.ts`): `.git` dir detection, symlink support, default branch detection
 - [ ] **M11.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` substitution + validation + create `workflows/workflow-schema.json`
 - [ ] **M12.** Git worktree management (`worktree.ts`): create, delete, path generation, pre-creation checks, `.george-foreman/copy-files` file copying
@@ -2826,6 +2819,7 @@ Implement in this order. Mark `[x]` when complete.
 - [ ] **M14.** OpenCode HTTP API client (`opencode.ts`): all endpoints, retry logic, SSE client (Node.js streaming), reconnect + status poll
 - [ ] **M15.** Job creation flow — UI only (steps 1–4): repo select, workflow select, argument input, branch name preview + confirm + advanced base-branch selector
 - [ ] **M16.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from §10), crash handling, startup restore + auto-resume
+  - **M4 store verification:** after a job reaches `running`, quit and relaunch the app — confirm the job reappears with its previous status and task state. This proves the store correctly persisted and restored the job record.
 - [ ] **M17.** IPC bridge (`src/shared/ipc.ts`, `src/shared/types.ts`, `src/preload/index.ts`): all channels, fully typed `window.api` object; Zustand store skeleton (`src/renderer/src/store.ts`)
 - [ ] **M18.** `DashboardTab` + `Layout`: repo grouping, job cards (status pill, progress bar, elapsed time), split-panel shell, session panel skeleton
 - [ ] **M19.** Session panel: two-column layout, task list with status icons + background tints, expandable subagent rows (lazy-load messages), chat thread (auto-scroll, scroll-lock)
