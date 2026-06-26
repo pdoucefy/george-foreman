@@ -76,6 +76,18 @@ vi.mock('../binary-check.ts', () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Mock workspace
+// ---------------------------------------------------------------------------
+
+const { mockScanWorkspace } = vi.hoisted(() => ({
+  mockScanWorkspace: vi.fn(),
+}));
+
+vi.mock('../workspace.ts', () => ({
+  scanWorkspace: mockScanWorkspace,
+}));
+
+// ---------------------------------------------------------------------------
 // Mock @electron-toolkit/utils — expose isDev flag for dev:clear-store branch
 // ---------------------------------------------------------------------------
 
@@ -146,6 +158,7 @@ describe('registerIpcHandlers', () => {
     it('persists workspaceFolder and githubHandle to the store', async () => {
       const handler = getHandler('onboarding:complete');
       mockCheckOpenCodeBinary.mockResolvedValue({ found: true, path: '/usr/local/bin/opencode' });
+      mockScanWorkspace.mockResolvedValue([]);
 
       await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
 
@@ -157,11 +170,24 @@ describe('registerIpcHandlers', () => {
     it('runs checkOpenCodeBinary and sends binary:status after completion', async () => {
       const handler = getHandler('onboarding:complete');
       mockCheckOpenCodeBinary.mockResolvedValue({ found: true, path: '/usr/local/bin/opencode' });
+      mockScanWorkspace.mockResolvedValue([]);
 
       await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
 
       expect(mockCheckOpenCodeBinary).toHaveBeenCalledOnce();
       expect(mockSend).toHaveBeenCalledWith('binary:status', { found: true });
+    });
+
+    it('scans workspace and sends workspace:updated after onboarding completes', async () => {
+      const handler = getHandler('onboarding:complete');
+      mockCheckOpenCodeBinary.mockResolvedValue({ found: false });
+      const repos = [{ name: 'my-repo', path: '/Users/me/repos/my-repo', defaultBranch: 'main' }];
+      mockScanWorkspace.mockResolvedValue(repos);
+
+      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
+
+      expect(mockScanWorkspace).toHaveBeenCalledWith('/Users/me/repos');
+      expect(mockSend).toHaveBeenCalledWith('workspace:updated', repos);
     });
   });
 
@@ -210,6 +236,38 @@ describe('registerIpcHandlers', () => {
       const handler = getHandler('dialog:open-directory');
       const result = await handler();
       expect(result).toBeNull();
+    });
+  });
+
+  describe('workspace:scan', () => {
+    it('returns repos from scanWorkspace and sends workspace:updated push', async () => {
+      const repos = [{ name: 'my-repo', path: '/ws/my-repo', defaultBranch: 'main' }];
+      mockScanWorkspace.mockResolvedValue(repos);
+      dataRef.current['config'] = {
+        ...(dataRef.current['config'] as object),
+        workspaceFolder: '/ws',
+      };
+
+      const handler = getHandler('workspace:scan');
+      const result = await handler();
+
+      expect(mockScanWorkspace).toHaveBeenCalledWith('/ws');
+      expect(result).toEqual(repos);
+      expect(mockSend).toHaveBeenCalledWith('workspace:updated', repos);
+    });
+
+    it('returns empty array and sends workspace:updated when workspace is empty', async () => {
+      mockScanWorkspace.mockResolvedValue([]);
+      dataRef.current['config'] = {
+        ...(dataRef.current['config'] as object),
+        workspaceFolder: '/ws',
+      };
+
+      const handler = getHandler('workspace:scan');
+      const result = await handler();
+
+      expect(result).toEqual([]);
+      expect(mockSend).toHaveBeenCalledWith('workspace:updated', []);
     });
   });
 

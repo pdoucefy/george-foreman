@@ -3,7 +3,7 @@ import styled from 'styled-components';
 
 import { Button } from './Button.tsx';
 
-// §8 — Binary missing banner
+// Banner: persistent warning shown when the opencode binary is missing.
 
 // ---------------------------------------------------------------------------
 // Styled components

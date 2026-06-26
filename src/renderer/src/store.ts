@@ -2,7 +2,7 @@ import type { Job, Repo } from '@shared/types';
 
 import { create } from 'zustand';
 
-// §16 — Renderer global state (Zustand)
+// Renderer global state (Zustand store).
 // Full shape as per ipc.md spec. Fields not yet used by M8 components
 // are initialized to their zero values and will be wired in later milestones.
 

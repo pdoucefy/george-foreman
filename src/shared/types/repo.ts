@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// §8 — Workspace / Repo
+// Repo: a git repository discovered in the workspace folder.
 
 export const schRepo = z.object({
   name: z.string(), // directory basename

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { schWorkflowTask } from './workflow.ts';
 
-// §10 — Job Creation
+// Job creation parameters.
 
 export const schJobCreateParams = z.object({
   repoPath: z.string(),
@@ -14,7 +14,7 @@ export const schJobCreateParams = z.object({
 });
 export type JobCreateParams = z.infer<typeof schJobCreateParams>;
 
-// §14 — Job Lifecycle & State Machine
+// Job lifecycle types and state machine.
 
 export const schJobStatus = z.enum([
   'pending', // Created in store; worktree + process not yet ready

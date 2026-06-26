@@ -60,7 +60,7 @@ george-foreman/
 │   │       ├── main.tsx       # React root
 │   │       ├── App.tsx        # Root component — tab shell, IPC listener wiring
 │   │       ├── Layout.tsx     # Split-panel shell (left list + right session panel)
-│   │       ├── theme.ts       # Design tokens (see ui.md §4)
+│   │       ├── theme.ts       # Design tokens (see ui.md — Design Tokens)
 │   │       ├── GlobalStyle.ts # Global CSS reset + base styles
 │   │       ├── store.ts       # Zustand app store
 │   │       ├── components/
@@ -102,4 +102,4 @@ george-foreman/
 ```
 
 > **Note on `.george-foreman/`:** This is a per-repo config directory that lives inside each
-> user's own repositories (not in the george-foreman app repo itself). See [§9](./workspace-workflows.md#workflow-system) for its format.
+> user's own repositories (not in the george-foreman app repo itself). See [Workflow System](./workspace-workflows.md#workflow-system) for its format.

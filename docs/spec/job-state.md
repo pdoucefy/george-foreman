@@ -72,7 +72,7 @@ pending
 
 running
   → needs_attention  (permission.updated SSE event received)
-  → completed        (workflow_completed event OR session.idle fallback — see [§16](./opencode-integration.md#orchestrator-protocol))
+  → completed        (workflow_completed event OR session.idle fallback — see [Orchestrator Protocol](./opencode-integration.md#orchestrator-protocol))
   → failed           (crash × 2; API error after retries; session.error event)
   → stopped          (user clicks Stop)
 

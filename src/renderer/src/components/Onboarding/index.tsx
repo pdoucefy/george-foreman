@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { Button } from '../ui/Button.tsx';
 import { TextInput } from '../ui/TextInput.tsx';
 
-// §8 — First-launch onboarding overlay (2 steps)
+// First-launch onboarding overlay: workspace folder + GitHub handle (2 steps).
 
 // ---------------------------------------------------------------------------
 // Styled components

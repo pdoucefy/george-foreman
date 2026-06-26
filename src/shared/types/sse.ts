@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// §15 / §16 — SSE + Orchestrator Protocol
+// SSE and Orchestrator Protocol types (OpenCode wire format).
 
 // SSE GlobalEvent wrapper (platform events from OpenCode server)
 // Uses z.union (not discriminatedUnion) because the catch-all variant uses z.string(),

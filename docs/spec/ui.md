@@ -268,7 +268,7 @@ The Dashboard shows all jobs where `archivedAt === null` — this includes activ
 - `failed` cards: red left border, error message shown truncated (1 line), "Archive" button
 - `stopped` cards: grey left border, "Archive" button
 - "Archive" button on card → sets `archivedAt = Date.now()`, moves job to Archive tab immediately
-- Status pill color per [§4 Status Pill Colors](#status-pill-colors)
+- Status pill color per [Status Pill Colors](#status-pill-colors)
 - Progress bar: shown for active jobs only; omitted for failed/stopped cards
 - Elapsed time: human-readable ("34s", "2m 34s", "1h 12m") for active; "failed Xm ago" / "stopped Xm ago" for terminal
 - Click → selects job; right panel shows session panel
@@ -307,7 +307,7 @@ Shown in the right panel when a job card is selected (split view — left panel 
 - **Overflow menu (⋮):**
   - "View process log" — enabled only when job is `failed`; opens log in a scrollable modal
   - "Delete worktree" — visible only when `worktreeDeleted === false` (hidden once deleted);
-    triggers two-step confirmation (see [§11](./job-creation.md#git-worktree-management))
+    triggers two-step confirmation (see [Git Worktree Management](./job-creation.md#git-worktree-management))
 
 #### Task list (left column, ~280px)
 
@@ -419,7 +419,7 @@ manually archived failed/stopped jobs.
   - **"Unarchive"** in overflow menu — available for `failed` and `stopped` jobs only;
     clears `archivedAt`, returns job to Dashboard; not available for `completed` jobs
   - "Delete worktree" in overflow menu — visible only when `worktreeDeleted === false`
-    (hidden once deleted); uses two-step confirmation (see [§11](./job-creation.md#git-worktree-management))
+    (hidden once deleted); uses two-step confirmation (see [Git Worktree Management](./job-creation.md#git-worktree-management))
 - Empty state per filter: "No completed jobs yet", "No failed jobs", etc.
 
 ### New Job flow (modal/overlay)

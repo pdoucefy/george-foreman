@@ -176,15 +176,15 @@ Each raw SSE message received from `GET /event` is processed through two separat
 #### Pipeline 1 — `GlobalEvent` wrapper (platform events)
 
 Every SSE message from the OpenCode server is a `GlobalEvent`. The canonical schema is
-defined in [§16](#orchestrator-protocol) (`schGlobalEvent`). Pipeline 1 dispatches on `payload.type`:
+defined in [Orchestrator Protocol](#orchestrator-protocol) (`schGlobalEvent`). Pipeline 1 dispatches on `payload.type`:
 
-| `payload.type`         | Action                                                                                                                                       |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `permission.updated`   | Permission detection (see [§16](#permission-detection)); **do not** forward to chat                                                          |
-| `session.idle`         | Completion/unexpected-termination fallback (see [§16](#sessionidle-fallback-completion--unexpected-termination)); **do not** forward to chat |
-| `session.error`        | Mark job failed (see [§16](#sessionerror--structured-error-from-orchestrator)); **do not** forward to chat                                   |
-| `message.part.updated` | Extract the text delta; run through Pipeline 2; also forward full event to renderer via `sse:event` IPC                                      |
-| All other types        | Forward to renderer as `sse:event` IPC for chat display                                                                                      |
+| `payload.type`         | Action                                                                                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `permission.updated`   | Permission detection (see [Permission Detection](#permission-detection)); **do not** forward to chat                                                           |
+| `session.idle`         | Completion/unexpected-termination fallback (see [session.idle Fallback](#sessionidle-fallback-completion--unexpected-termination)); **do not** forward to chat |
+| `session.error`        | Mark job failed (see [session.error](#sessionerror--structured-error-from-orchestrator)); **do not** forward to chat                                           |
+| `message.part.updated` | Extract the text delta; run through Pipeline 2; also forward full event to renderer via `sse:event` IPC                                                        |
+| All other types        | Forward to renderer as `sse:event` IPC for chat display                                                                                                        |
 
 #### Pipeline 2 — Orchestrator structured JSON blocks (within message text)
 
@@ -195,7 +195,7 @@ each line of the text for structured JSON blocks:
 - For each line: attempt `JSON.parse(line)`
 - If it parses as a valid `OrchestratorEvent` (known `type` field: `task_started`,
   `subagent_spawned`, `task_completed`, `workflow_completed`) → process as structured event
-  (see [§16](#structured-event-handling)); **suppress that line from chat display**
+  (see [Structured Event Handling](#structured-event-handling)); **suppress that line from chat display**
 - All other lines → include in chat display
 
 ### Reconnect
@@ -411,7 +411,7 @@ type EventSessionIdle = z.infer<typeof schEventSessionIdle>;
 - Else if `job.status === 'running'` AND tasks are incomplete:
   - The orchestrator is paused mid-workflow, likely waiting for user input
   - Do **not** mark the job `failed`
-  - Show the **"Waiting for your input…"** hint in the free-text input placeholder (see [§19](./ui.md#ui-structure))
+  - Show the **"Waiting for your input…"** hint in the free-text input placeholder (see [UI Structure](./ui.md#ui-structure))
   - If `!app.isFocused()` → fire macOS notification:
     ```text
     Title: Input Required

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// §9 — Workflow System
+// Workflow types: YAML-defined multi-step agent workflows.
 
 export const schWorkflowSource = z.enum(['repo', 'user', 'builtin']);
 export type WorkflowSource = z.infer<typeof schWorkflowSource>;

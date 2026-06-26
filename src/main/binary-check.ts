@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 
-// §12 — binary check
+// Binary check: runs `which opencode` to verify the binary is on PATH.
 
 export const checkOpenCodeBinary = (): Promise<{ found: boolean; path?: string }> =>
   new Promise((resolve) => {

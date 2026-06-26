@@ -8,7 +8,7 @@ import { Spinner } from './components/ui/Spinner.tsx';
 import { useAppStore } from './store.ts';
 import { theme } from './theme.ts';
 
-// §8 — App shell: routing between Onboarding and main UI
+// App shell: routes between Onboarding (first launch) and main UI.
 
 type AppStatus = 'loading' | 'onboarding' | 'ready';
 

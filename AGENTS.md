@@ -53,14 +53,21 @@ src/main/
   store.ts            — electron-store instance + schema migration + typed storeGet/storeSet
   window.ts           — Pure: shouldHideOnClose() + shouldAllowNewInstance()
   binary-check.ts     — checkOpenCodeBinary(): runs `which opencode`, returns { found, path? }
-  ipc-handlers.ts     — registerIpcHandlers(mainWindow): M8 IPC handlers
+  ipc-handlers.ts     — registerIpcHandlers(mainWindow): M8+M9 IPC handlers
                         (onboarding:is-complete, onboarding:complete, binary:check,
-                        binary:recheck, dialog:open-directory)
+                        binary:recheck, dialog:open-directory, workspace:scan)
+  workspace.ts        — scanWorkspace(workspaceFolder): reads workspace dir, filters valid
+                        git repos (.git dir not file), resolves symlinks via fs.realpath,
+                        detects default branch (symbolic-ref → show-ref main/master → "main"),
+                        returns Repo[] sorted alphabetically
   __tests__/
     store.test.ts     — 18 tests; uses vi.hoisted mock pattern (see Testing Patterns below)
     window.test.ts    — hide/quit decision, single-instance decision
     binary-check.test.ts — 4 tests: found, not found, path trimming, empty stdout
-    ipc-handlers.test.ts — 10 tests: all M8 handler behaviors
+    ipc-handlers.test.ts — 16 tests: all M8+M9 handler behaviors
+    workspace.test.ts — 14 tests: .git dir included; worktree (.git file) excluded; symlink;
+                        missing folder; empty folder; symbolic-ref branch; fallback main/master;
+                        alphabetical sort; per-repo error resilience; .george-foreman dir
 
 src/renderer/src/
   theme.ts            — Design token object (bg, accent, status, text, border, space, font,
@@ -120,8 +127,8 @@ src/renderer/__tests__/
 
 src/preload/
   index.ts            — Exposes window.electron (toolkit) + partial window.api:
-                        onboarding, binary, dialog channels + onBinaryStatus,
-                        onNavigateSettings push subscriptions; stub no-ops for
+                        onboarding, binary, dialog, workspace channels + onBinaryStatus,
+                        onNavigateSettings, onWorkspaceUpdated push subscriptions; stub no-ops for
                         remaining push channels (completed in M16)
 ```
 
@@ -207,7 +214,7 @@ it('migrates on version mismatch', async () => {
 
 ## IPC architecture
 
-`src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` exposes a **partial** `window.api` via `contextBridge` — M8 channels only (`onboarding`, `binary`, `dialog`, plus push subscriptions `onBinaryStatus` and `onNavigateSettings`). The remaining channels are stub no-ops returning `() => {}`. The full bridge is completed in M16.
+`src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` exposes a **partial** `window.api` via `contextBridge` — M8+M9 channels (`onboarding`, `binary`, `dialog`, `workspace`, plus push subscriptions `onBinaryStatus`, `onNavigateSettings`, and `onWorkspaceUpdated`). The remaining channels are stub no-ops returning `() => {}`. The full bridge is completed in M16.
 
 Renderer code must only use `window.api` — never raw `ipcRenderer`.
 

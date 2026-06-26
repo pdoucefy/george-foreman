@@ -5,8 +5,9 @@ import { dialog, ipcMain } from 'electron';
 
 import { checkOpenCodeBinary } from './binary-check.ts';
 import { store, storeGet, storeSet } from './store.ts';
+import { scanWorkspace } from './workspace.ts';
 
-// §8 — M8 IPC handlers (onboarding + binary + dialog)
+// IPC handlers: onboarding, binary check, dialog, workspace scan.
 // Full window.api bridge is completed in M16.
 
 const runBinaryCheck = async (
@@ -15,6 +16,12 @@ const runBinaryCheck = async (
   const result = await checkOpenCodeBinary();
   mainWindow.webContents.send('binary:status', { found: result.found });
   return result;
+};
+
+const runWorkspaceScan = async (mainWindow: BrowserWindow, workspaceFolder: string) => {
+  const repos = await scanWorkspace(workspaceFolder);
+  mainWindow.webContents.send('workspace:updated', repos);
+  return repos;
 };
 
 export const registerIpcHandlers = (mainWindow: BrowserWindow): void => {
@@ -36,7 +43,7 @@ export const registerIpcHandlers = (mainWindow: BrowserWindow): void => {
         workspaceFolder: params.workspaceFolder,
         githubHandle: params.githubHandle,
       });
-      // TODO M9: trigger workspace:scan here
+      await runWorkspaceScan(mainWindow, params.workspaceFolder);
       await runBinaryCheck(mainWindow);
     },
   );
@@ -48,6 +55,15 @@ export const registerIpcHandlers = (mainWindow: BrowserWindow): void => {
   ipcMain.handle('binary:check', () => runBinaryCheck(mainWindow));
 
   ipcMain.handle('binary:recheck', () => runBinaryCheck(mainWindow));
+
+  // -------------------------------------------------------------------------
+  // Workspace
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('workspace:scan', async () => {
+    const config = storeGet('config');
+    return runWorkspaceScan(mainWindow, config.workspaceFolder);
+  });
 
   // -------------------------------------------------------------------------
   // Dialog

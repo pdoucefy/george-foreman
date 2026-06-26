@@ -60,7 +60,7 @@ Spawning from a different directory will cause OpenCode to operate on the wrong 
 ## `EventSource` is not available in the Electron main process
 
 The browser `EventSource` API is not available in Node.js. The SSE client is implemented
-using `http.get` with a streaming response and a line-buffer parser (see [§15](./opencode-integration.md#real-time-updates-sse)). Do not
+using `http.get` with a streaming response and a line-buffer parser (see [Real-Time Updates (SSE)](./opencode-integration.md#real-time-updates-sse)). Do not
 use the browser `EventSource` class or add the `eventsource` npm package — the custom
 approach is already specced and handles chunk-boundary splitting correctly.
 
@@ -116,7 +116,7 @@ from `resources/icon-1024.png`. The `.icns` file in `resources/` is only used by
 ## Dock icon flashes the default Electron icon on startup and quit
 
 `app.dock.setIcon()` is called in `app.whenReady()` but macOS briefly shows the default
-Electron icon before and after the app sets its own. Known limitation — see [§29](./backlog.md).
+Electron icon before and after the app sets its own. Known limitation — see [Backlog](./backlog.md).
 
 ## `DefaultTheme` augmentation is required for styled-components theme typing
 

@@ -9,7 +9,7 @@ import type { IpcRendererEvent } from 'electron';
 // Use process.env.NODE_ENV instead (set by electron-vite during dev).
 const isDev = process.env.NODE_ENV === 'development';
 
-// §8 — Partial window.api (M8 channels only: onboarding, binary, dialog)
+// Partial window.api bridge (onboarding, binary, dialog, workspace channels).
 // Remaining channels are wired in M16.
 
 const noop = (): void => {
@@ -42,6 +42,13 @@ const api = {
   },
 
   // -------------------------------------------------------------------------
+  // Workspace
+  // -------------------------------------------------------------------------
+  workspace: {
+    scan: (): Promise<Repo[]> => ipcRenderer.invoke('workspace:scan'),
+  },
+
+  // -------------------------------------------------------------------------
   // Push subscriptions (main → renderer)
   // -------------------------------------------------------------------------
   onBinaryStatus: (cb: (params: { found: boolean }) => void): (() => void) => {
@@ -64,7 +71,11 @@ const api = {
   onSseOrchestratorEvent: (
     _cb: (params: { jobId: string; event: OrchestratorEvent }) => void,
   ): (() => void) => noop,
-  onWorkspaceUpdated: (_cb: (repos: Repo[]) => void): (() => void) => noop,
+  onWorkspaceUpdated: (cb: (repos: Repo[]) => void): (() => void) => {
+    const handler = (_event: IpcRendererEvent, repos: Repo[]): void => cb(repos);
+    ipcRenderer.on('workspace:updated', handler);
+    return () => ipcRenderer.removeListener('workspace:updated', handler);
+  },
   onNavigateJob: (_cb: (jobId: string) => void): (() => void) => noop,
 
   // Dev-only helpers — only present when is.dev === true

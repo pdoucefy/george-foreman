@@ -74,7 +74,7 @@
 ### ESLint (v9 flat config)
 
 - Config: `eslint.config.ts`
-- Pinned to ESLint v9 — **do not upgrade** (see [§27](./gotchas.md#known-gotchas))
+- Pinned to ESLint v9 — **do not upgrade** (see [Known Gotchas](./gotchas.md#known-gotchas))
 - `import/order`: `off` (handled by Prettier sort-imports plugin)
 - `react/prop-types`: `off`
 - `react/react-in-jsx-scope`: `off`
@@ -124,7 +124,7 @@ parallel type definitions.
 **Do not use Zod for:**
 
 - Internal in-memory data that has already been validated at the boundary (no double-parsing)
-- Renderer form validation — keep that as simple inline checks per the form specs in [§6](./app-lifecycle.md#first-launch-onboarding), [§7](./app-lifecycle.md#settings), [§10](./job-creation.md#job-creation-flow)
+- Renderer form validation — keep that as simple inline checks per the form specs in [First-Launch Onboarding](./app-lifecycle.md#first-launch-onboarding), [Settings](./app-lifecycle.md#settings), [Job Creation Flow](./job-creation.md#job-creation-flow)
 
 **Pattern:**
 
@@ -221,7 +221,7 @@ import '@testing-library/jest-dom';
 | `opencode-process.ts` | Port discovery from stdout; fallback to 4096; crash count increment; second crash → `failed`; SIGTERM then SIGKILL sequence                                            |
 | `store.ts`            | Schema version migration clears jobs preserves config; typed get/set round-trips                                                                                       |
 | `notifications.ts`    | Permission notification content + `isFocused` gate; `session.idle` pause notification content + `isFocused` gate; no notification when app is focused                  |
-| `job-manager.ts`      | State transitions (all from [§14](./job-state.md#job-lifecycle--state-machine)); startup restore logic                                                                 |
+| `job-manager.ts`      | State transitions (all from [Job Lifecycle & State Machine](./job-state.md#job-lifecycle--state-machine)); startup restore logic                                       |
 | Branch utils          | Slug generation (all edge cases); prefix selection (all 8 cases); uniqueness validation; git ref validity                                                              |
 
 ### Integration tests (Node + mock HTTP server)
@@ -312,7 +312,7 @@ mac:
         - arm64
 ```
 
-Targets `arm64` (Apple Silicon) only. See [§29](./backlog.md) for the backlog item on adding `x64`/universal
+Targets `arm64` (Apple Silicon) only. See [Backlog](./backlog.md) for the backlog item on adding `x64`/universal
 binary support.
 
 ### Build scripts
@@ -423,4 +423,4 @@ allowBuilds:
   electron-builder: true # add only if pnpm warns about it
 ```
 
-**Never run `pnpm approve-builds`** — see [§27](./gotchas.md#known-gotchas).
+**Never run `pnpm approve-builds`** — see [Known Gotchas](./gotchas.md#known-gotchas).

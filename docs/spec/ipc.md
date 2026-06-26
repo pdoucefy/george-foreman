@@ -128,7 +128,7 @@ Defined in `src/shared/ipc.ts`. Implemented in `src/preload/index.ts` via `conte
 
 ## Types in `src/shared/types.ts`
 
-All types from [§9](./workspace-workflows.md#workflow-system), [§10](./job-creation.md#job-creation-flow), [§14](./job-state.md#job-lifecycle--state-machine), plus:
+All types from [Workflow System](./workspace-workflows.md#workflow-system), [Job Creation](./job-creation.md#job-creation-flow), [Job Lifecycle & State Machine](./job-state.md#job-lifecycle--state-machine), plus:
 
 ```ts
 const schJobCreateParams = z.object({

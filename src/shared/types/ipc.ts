@@ -6,7 +6,7 @@ import type { OrchestratorEvent } from './sse.ts';
 import type { Config } from './store.ts';
 import type { Workflow } from './workflow.ts';
 
-// §18 — IPC / Session messages
+// IPC session message types (text/tool_call/tool_result parts).
 
 export const schMessagePart = z.object({
   type: z.enum(['text', 'tool_call', 'tool_result']),
@@ -22,7 +22,7 @@ export const schSessionMessage = z.object({
 });
 export type SessionMessage = z.infer<typeof schSessionMessage>;
 
-// §18 — ElectronAPI (window.api shape declared for renderer TypeScript)
+// ElectronAPI: window.api shape declared for renderer TypeScript.
 
 export type ElectronAPI = {
   // Invoke (renderer → main, returns Promise)

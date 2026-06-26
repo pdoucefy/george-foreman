@@ -106,10 +106,10 @@ On "Create Job" click:
 1. Generate `jobId = 'job-' + crypto.randomUUID()`
 2. Persist job with status `pending` to `electron-store`
 3. Send `job:created` IPC to renderer
-4. Create Git worktree ([§11](#git-worktree-management))
-5. Copy gitignored files ([§11](#git-worktree-management))
-6. Spawn `opencode serve` ([§12](./opencode-integration.md#opencode-process-management))
-7. Poll `/global/health` until ready ([§12](./opencode-integration.md#opencode-process-management))
+4. Create Git worktree ([Git Worktree Management](#git-worktree-management))
+5. Copy gitignored files ([Git Worktree Management](#git-worktree-management))
+6. Spawn `opencode serve` ([OpenCode Process Management](./opencode-integration.md#opencode-process-management))
+7. Poll `/global/health` until ready ([OpenCode Process Management](./opencode-integration.md#opencode-process-management))
 8. `POST /session` → get `orchestratorSessionId`
 9. `POST /session/:id/prompt_async` → send workflow + argument
 10. Subscribe to `GET /event` SSE stream
@@ -181,7 +181,7 @@ Before running the command:
 
 After successful `git worktree add`:
 
-1. Determine globs (see [§9 file-copy fallback chain](./workspace-workflows.md#file-copy-fallback-chain))
+1. Determine globs (see [File-Copy Fallback Chain](./workspace-workflows.md#file-copy-fallback-chain))
 2. For each glob, expand against `<repoPath>` (not worktreePath) using `fs.promises.glob()` (Node 22 built-in)
 3. For each matched file (relative path, not directory):
    - Compute destination: `<worktreePath>/<relativePath>`

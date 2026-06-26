@@ -7,6 +7,7 @@ import { checkOpenCodeBinary } from './binary-check.ts';
 import { registerIpcHandlers } from './ipc-handlers.ts';
 import { storeGet, storeSet } from './store.ts';
 import { shouldAllowNewInstance, shouldHideOnClose } from './window.ts';
+import { scanWorkspace } from './workspace.ts';
 
 let mainWindow: BrowserWindow | null = null;
 let isQuitting = false;
@@ -19,6 +20,12 @@ const getIconPath = (): string =>
 const runStartupChecks = async (win: BrowserWindow): Promise<void> => {
   const result = await checkOpenCodeBinary();
   win.webContents.send('binary:status', { found: result.found });
+
+  const { workspaceFolder } = storeGet('config');
+  if (workspaceFolder !== '') {
+    const repos = await scanWorkspace(workspaceFolder);
+    win.webContents.send('workspace:updated', repos);
+  }
 };
 
 const createWindow = (): void => {

@@ -137,4 +137,4 @@ tab (Dashboard or Archive).
 > trigger `history.back()` in the Electron renderer. Since the app has no client-side router
 > and pushes no history entries, these gestures do nothing. The intended navigation mechanisms
 > are the "← Back" button and `Cmd+,` (which toggles Settings). Browser-like navigation
-> (swipe, mouse back/forward) is a backlog item — see [§29](./backlog.md).
+> (swipe, mouse back/forward) is a backlog item — see [Backlog](./backlog.md).

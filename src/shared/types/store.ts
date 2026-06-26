@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { schJob } from './job.ts';
 
-// §17 — electron-store schema
+// electron-store schema: typed config, jobs, and job logs.
 
 export const schWindowBounds = z.object({
   x: z.number(),
