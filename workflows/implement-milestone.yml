@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json
 name: Implement Milestone
-description: Grill, validate, implement with TDD, validate, test, and ship a milestone end-to-end
+description: Implement a milestone in the codebase using TDD, with a grilling session to produce a plan, and validation of the plan and implementation.
 argument: required
 
 tasks:
