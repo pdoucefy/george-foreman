@@ -208,7 +208,7 @@ export const Onboarding = ({ onDone }: OnboardingProps): React.JSX.Element => {
               <StepHeading>What&apos;s your GitHub username?</StepHeading>
               <StepSubtext>
                 Used for naming branches when no other pattern matches (e.g.{' '}
-                <code>sam/feature-name</code>)
+                <code>george-foreman/feature-name</code>)
               </StepSubtext>
             </div>
 
@@ -220,7 +220,7 @@ export const Onboarding = ({ onDone }: OnboardingProps): React.JSX.Element => {
                 setHandle(e.target.value);
                 if (handleError) setHandleError(null);
               }}
-              placeholder="sam"
+              placeholder="george-foreman"
               error={handleError ?? undefined}
             />
 

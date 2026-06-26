@@ -160,11 +160,11 @@ describe('registerIpcHandlers', () => {
       mockCheckOpenCodeBinary.mockResolvedValue({ found: true, path: '/usr/local/bin/opencode' });
       mockScanWorkspace.mockResolvedValue([]);
 
-      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
+      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'george-foreman' });
 
       const config = storeGet('config');
       expect(config.workspaceFolder).toBe('/Users/me/repos');
-      expect(config.githubHandle).toBe('sam');
+      expect(config.githubHandle).toBe('george-foreman');
     });
 
     it('runs checkOpenCodeBinary and sends binary:status after completion', async () => {
@@ -172,7 +172,7 @@ describe('registerIpcHandlers', () => {
       mockCheckOpenCodeBinary.mockResolvedValue({ found: true, path: '/usr/local/bin/opencode' });
       mockScanWorkspace.mockResolvedValue([]);
 
-      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
+      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'george-foreman' });
 
       expect(mockCheckOpenCodeBinary).toHaveBeenCalledOnce();
       expect(mockSend).toHaveBeenCalledWith('binary:status', { found: true });
@@ -184,7 +184,7 @@ describe('registerIpcHandlers', () => {
       const repos = [{ name: 'my-repo', path: '/Users/me/repos/my-repo', defaultBranch: 'main' }];
       mockScanWorkspace.mockResolvedValue(repos);
 
-      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'sam' });
+      await handler({}, { workspaceFolder: '/Users/me/repos', githubHandle: 'george-foreman' });
 
       expect(mockScanWorkspace).toHaveBeenCalledWith('/Users/me/repos');
       expect(mockSend).toHaveBeenCalledWith('workspace:updated', repos);

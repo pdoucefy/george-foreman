@@ -442,7 +442,7 @@ Full-screen content area (replaces left+right panels, not a modal):
 
 ```text
 Workspace Folder  [/Users/pdoucet/workspace     ] [Browse] [Rescan]
-GitHub Handle     [sam                     ]
+GitHub Handle     [george-foreman               ]
 User Workflows    [                             ] [Browse] [Clear]
 Files to copy     ┌─────────────────────────────┐
 (one glob/line)   │ .env                        │

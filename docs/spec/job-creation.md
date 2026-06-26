@@ -61,7 +61,7 @@ uses `<workflow-slug>` only — no `/<local-slug>` suffix:
 | ----------------------------------------------- | ------------------------------------------------------------------------------------- |
 | AV pattern + no argument                        | `AV-<ARGUMENT>/<workflow-slug>` is not applicable; falls through to none-of-the-above |
 | Workflow keyword match (bugfix, refactor, etc.) | `<prefix>/<workflow-slug>` (e.g. `bugfix/Fix-Login`)                                  |
-| None of the above                               | `<github-handle>/<workflow-slug>` (e.g. `sam/Implement-Feature`)                      |
+| None of the above                               | `<github-handle>/<workflow-slug>` (e.g. `george-foreman/Implement-Feature`)           |
 
 The user can still edit the full branch name at step 4.
 
