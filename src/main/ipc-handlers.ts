@@ -5,9 +5,10 @@ import { dialog, ipcMain } from 'electron';
 
 import { checkOpenCodeBinary } from './binary-check.ts';
 import { store, storeGet, storeSet } from './store.ts';
+import { loadWorkflows } from './workflow-loader.ts';
 import { scanWorkspace } from './workspace.ts';
 
-// IPC handlers: onboarding, binary check, dialog, workspace scan.
+// IPC handlers: onboarding, binary check, dialog, workspace scan, workflow list.
 // Full window.api bridge is completed in M16.
 
 const runBinaryCheck = async (
@@ -63,6 +64,15 @@ export const registerIpcHandlers = (mainWindow: BrowserWindow): void => {
   ipcMain.handle('workspace:scan', async () => {
     const config = storeGet('config');
     return runWorkspaceScan(mainWindow, config.workspaceFolder);
+  });
+
+  // -------------------------------------------------------------------------
+  // Workflow
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('workflow:list', async (_event, repoPath: string) => {
+    const config = storeGet('config');
+    return loadWorkflows({ repoPath, config });
   });
 
   // -------------------------------------------------------------------------

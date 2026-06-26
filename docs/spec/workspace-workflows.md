@@ -99,7 +99,7 @@ inline errors and autocompletion.
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/anomalyco/george-foreman/main/workflows/workflow-schema.json",
+  "$id": "https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json",
   "title": "George Foreman Workflow",
   "description": "A multi-step AI agent workflow definition for George Foreman",
   "type": "object",
@@ -151,7 +151,7 @@ inline errors and autocompletion.
 **Option 1 — `$schema` comment** (per-file, portable, recommended for `.george-foreman/workflows/`):
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/anomalyco/george-foreman/main/workflows/workflow-schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json
 name: Implement Feature
 description: Full cycle from tests to implementation to docs
 tasks:
@@ -165,7 +165,7 @@ tasks:
 ```json
 {
   "yaml.schemas": {
-    "https://raw.githubusercontent.com/anomalyco/george-foreman/main/workflows/workflow-schema.json": [
+    "https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json": [
       ".george-foreman/workflows/*.yml",
       ".george-foreman/workflows/*.yaml"
     ]
@@ -194,13 +194,13 @@ fetches and caches it automatically. The built-in `workflows/example.yml` includ
 
 Loaded and merged in this priority order (all three always shown in picker):
 
-1. **Repo-level** — `.george-foreman/workflows/*.yml` inside the selected repo
+1. **Repo-level** — `.george-foreman/workflows/*.yml` and `*.yaml` inside the selected repo
    - Labeled with the repo name (e.g. "my-app")
    - Shown first in picker
-2. **User folder** — path configured in Settings → User workflows folder (`*.yml`)
+2. **User folder** — path configured in Settings → User workflows folder (`*.yml` and `*.yaml`)
    - Labeled with the folder's basename
    - Shown second
-3. **Built-in** — `workflows/*.yml` shipped inside the app bundle
+3. **Built-in** — `workflows/*.yml` and `*.yaml` shipped inside the app bundle
    - Labeled "Built-in"
    - Shown last
 
@@ -211,7 +211,7 @@ their source label.
 
 Responsibilities:
 
-1. Given a `repoPath` and the current `Config`, locate files from all three sources
+1. Given a `repoPath` and the current `Config`, locate files from all three sources (`.yml` and `.yaml` extensions accepted)
 2. Parse each YAML file with `js-yaml`
 3. Validate required fields; skip malformed files with a `console.warn` (do not crash)
 4. Return `Workflow[]`
@@ -251,7 +251,7 @@ user's choice.
 
 ```text
 <repo>/.george-foreman/
-├── workflows/          # Repo-specific workflow YAMLs
+├── workflows/          # Repo-specific workflow YAMLs (*.yml and *.yaml accepted)
 │   └── *.yml
 └── copy-files          # Plain-text glob list for gitignored file copying
 ```

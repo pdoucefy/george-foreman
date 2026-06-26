@@ -27,7 +27,7 @@ Implement in this order.
 - [x] **M8.** First-launch onboarding (2-step: workspace folder + GitHub handle) + `opencode` binary startup check + persistent error banner
   - **M4 store verification:** after completing onboarding, quit and relaunch the app — confirm it goes straight to the main UI (onboarding does not reappear). This proves the store correctly persisted `workspaceFolder` and `githubHandle`.
 - [x] **M9.** Workspace scanning (`workspace.ts`): `.git` dir detection, symlink support, default branch detection
-- [ ] **M10.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` substitution + validation + create `workflows/workflow-schema.json`
+- [x] **M10.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` auto-detection + validation + create `workflows/workflow-schema.json` and `workflows/example.yml`
 - [ ] **M11.** Git worktree management (`worktree.ts`): create, delete, path generation, pre-creation checks, `.george-foreman/copy-files` file copying
 - [ ] **M12.** OpenCode process management (`opencode-process.ts`): spawn, port discovery, health polling, crash handling (one auto-restart, then fail), process log capture (ring buffer)
 - [ ] **M13.** OpenCode HTTP API client (`opencode.ts`): all endpoints, retry logic, SSE client (Node.js streaming), reconnect + status poll

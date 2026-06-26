@@ -88,6 +88,18 @@ vi.mock('../workspace.ts', () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Mock workflow-loader
+// ---------------------------------------------------------------------------
+
+const { mockLoadWorkflows } = vi.hoisted(() => ({
+  mockLoadWorkflows: vi.fn(),
+}));
+
+vi.mock('../workflow-loader.ts', () => ({
+  loadWorkflows: mockLoadWorkflows,
+}));
+
+// ---------------------------------------------------------------------------
 // Mock @electron-toolkit/utils — expose isDev flag for dev:clear-store branch
 // ---------------------------------------------------------------------------
 
@@ -133,6 +145,7 @@ describe('registerIpcHandlers', () => {
       jobs: {},
       jobLogs: {},
     };
+    mockLoadWorkflows.mockResolvedValue([]);
     registerIpcHandlers(makeFakeWindow());
   });
 
@@ -294,6 +307,44 @@ describe('registerIpcHandlers', () => {
         'No handler registered for channel: dev:clear-store',
       );
       mockIsDev.dev = true; // restore for subsequent tests
+    });
+  });
+
+  describe('workflow:list', () => {
+    it('calls loadWorkflows with the repoPath argument and current config', async () => {
+      const handler = getHandler('workflow:list');
+      await handler({}, '/workspace/my-repo');
+
+      expect(mockLoadWorkflows).toHaveBeenCalledWith({
+        repoPath: '/workspace/my-repo',
+        config: expect.objectContaining({ workspaceFolder: '' }),
+      });
+    });
+
+    it('returns the workflows array from loadWorkflows', async () => {
+      const workflows = [
+        {
+          name: 'My Workflow',
+          source: 'builtin' as const,
+          argument: 'none' as const,
+          tasks: [{ name: 't', prompt: 'p' }],
+        },
+      ];
+      mockLoadWorkflows.mockResolvedValue(workflows);
+
+      const handler = getHandler('workflow:list');
+      const result = await handler({}, '/workspace/my-repo');
+
+      expect(result).toEqual(workflows);
+    });
+
+    it('returns empty array when loadWorkflows returns no workflows', async () => {
+      mockLoadWorkflows.mockResolvedValue([]);
+
+      const handler = getHandler('workflow:list');
+      const result = await handler({}, '/workspace/my-repo');
+
+      expect(result).toEqual([]);
     });
   });
 });

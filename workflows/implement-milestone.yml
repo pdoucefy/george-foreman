@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json
+name: Implement Milestone
+description: Grill, validate, implement with TDD, validate, test, and ship a milestone end-to-end
+argument: required
+
+tasks:
+  - name: Grill the milestone
+    prompt: |
+      Run a /grilling session about the next milestone to implement in this codebase.
+      The goal is to produce a plan of the required changes so the milestone can be
+      implemented with the TDD skill after.
+
+      Make sure the grilling session:
+      - Uses the question tool when asking each question (recommending an answer each time)
+      - Covers all use cases and edge cases exhaustively (documented and undocumented)
+      - Covers all relevant tests
+      - Results in a plan that includes updating AGENTS.md and spec files if necessary
+
+      Milestone to implement: {{argument}}
+
+  - name: Validate the plan
+    prompt: |
+      Audit the plan produced in the previous session against this checklist before
+      any code is written. If you find gaps, resolve them now (update the plan inline)
+      before declaring it approved.
+
+      Checklist:
+      - Every deliverable listed in the milestone spec is covered
+      - All plausible edge cases are identified (documented and undocumented)
+      - All doc updates are explicitly scoped: AGENTS.md, spec files, milestones.md
+      - Test strategy is complete: which behaviors are unit-testable, which need
+        integration tests, which require the user to test manually
+      - No blocking ambiguities remain that would stall implementation
+
+      Output the fully resolved and approved plan in full before proceeding.
+
+  - name: Implement with TDD
+    prompt: |
+      Implement the approved plan strictly using TDD — one red-green cycle per
+      behavior. Do not write implementation ahead of a failing test.
+
+      Rules:
+      - Run the relevant test suite after each cycle; stay green before moving on
+      - Run both typechecks (pnpm tsc --noEmit -p tsconfig.node.json and tsconfig.web.json)
+        after every file change
+      - Apply all doc updates from the plan (AGENTS.md, spec files, milestones.md marked [x])
+      - Do not add speculative features or tests not in the approved plan
+
+  - name: Validate the implementation
+    prompt: |
+      Diff the implementation against the approved plan. If you find anything missing
+      or incorrect, fix it now before declaring the implementation approved.
+
+      Checklist:
+      - Every file the plan said to create or modify exists and is correct
+      - Every behavior the plan said to test has a passing test
+      - Both typechecks pass (pnpm tsc --noEmit -p tsconfig.node.json and tsconfig.web.json)
+      - The full test suite is green with no regressions
+      - All doc updates are applied: AGENTS.md updated, spec files updated,
+        milestones.md has the milestone marked [x]
+
+      Output "IMPLEMENTATION APPROVED" only when every item on the checklist passes.
+
+  - name: Test and hand off to user
+    prompt: |
+      Run all automated checks:
+      - Full test suite: pnpm vitest run --config vitest.config.ts and vitest.config.web.ts
+      - Both typechecks: pnpm tsc --noEmit -p tsconfig.node.json and tsconfig.web.json
+
+      Then identify everything that cannot be verified without a running app or human
+      interaction. For each such item, write a clear, numbered step the user can follow.
+      Ask the user to perform those steps and report back. Wait for their confirmation
+      before proceeding to the next task.
+
+  - name: Lint and format
+    prompt: |
+      Run pnpm lint:fix to auto-fix any ESLint warnings. If any warnings remain that
+      lint:fix cannot resolve, fix them manually.
+
+      Then run pnpm format to apply Prettier across the codebase.
+
+      Verify both pass cleanly:
+      - pnpm lint (zero warnings, zero errors)
+      - pnpm format:check (no files would be changed)
+
+      Fix anything that fails before done.

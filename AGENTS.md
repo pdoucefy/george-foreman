@@ -53,21 +53,30 @@ src/main/
   store.ts            — electron-store instance + schema migration + typed storeGet/storeSet
   window.ts           — Pure: shouldHideOnClose() + shouldAllowNewInstance()
   binary-check.ts     — checkOpenCodeBinary(): runs `which opencode`, returns { found, path? }
-  ipc-handlers.ts     — registerIpcHandlers(mainWindow): M8+M9 IPC handlers
+  ipc-handlers.ts     — registerIpcHandlers(mainWindow): M8+M9+M10 IPC handlers
                         (onboarding:is-complete, onboarding:complete, binary:check,
-                        binary:recheck, dialog:open-directory, workspace:scan)
+                        binary:recheck, dialog:open-directory, workspace:scan,
+                        workflow:list)
   workspace.ts        — scanWorkspace(workspaceFolder): reads workspace dir, filters valid
                         git repos (.git dir not file), resolves symlinks via fs.realpath,
                         detects default branch (symbolic-ref → show-ref main/master → "main"),
                         returns Repo[] sorted alphabetically
+  workflow-loader.ts  — loadWorkflows({ repoPath, config }): loads workflows from all 3
+                        sources (repo .george-foreman/workflows/, userWorkflowsFolder,
+                        built-in workflows/); parses YAML with js-yaml; validates with Zod;
+                        auto-detects argument field if omitted; skips malformed files with
+                        console.warn; accepts *.yml and *.yaml
   __tests__/
     store.test.ts     — 18 tests; uses vi.hoisted mock pattern (see Testing Patterns below)
     window.test.ts    — hide/quit decision, single-instance decision
     binary-check.test.ts — 4 tests: found, not found, path trimming, empty stdout
-    ipc-handlers.test.ts — 16 tests: all M8+M9 handler behaviors
+    ipc-handlers.test.ts — 19 tests: all M8+M9+M10 handler behaviors
     workspace.test.ts — 14 tests: .git dir included; worktree (.git file) excluded; symlink;
                         missing folder; empty folder; symbolic-ref branch; fallback main/master;
                         alphabetical sort; per-repo error resilience; .george-foreman dir
+    workflow-loader.test.ts — 19 tests: all 3 sources; argument auto-detect (none/required/
+                        explicit); null/missing dirs; YAML parse errors; Zod failures;
+                        extension handling (.yml/.yaml); no-dedup across sources
 
 src/renderer/src/
   theme.ts            — Design token object (bg, accent, status, text, border, space, font,
@@ -130,6 +139,13 @@ src/preload/
                         onboarding, binary, dialog, workspace channels + onBinaryStatus,
                         onNavigateSettings, onWorkspaceUpdated push subscriptions; stub no-ops for
                         remaining push channels (completed in M16)
+
+workflows/
+  workflow-schema.json — JSON Schema Draft 7 for workflow YAML files; hosted at its $id URL
+                         (https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json)
+                         for VS Code YAML validation via redhat.vscode-yaml
+  example.yml          — Built-in "Implement Milestone" workflow; includes $schema comment
+                         as a living example for users to copy into their own repos
 ```
 
 ---
