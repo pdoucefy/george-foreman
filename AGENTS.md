@@ -66,17 +66,29 @@ src/main/
                         built-in workflows/); parses YAML with js-yaml; validates with Zod;
                         auto-detects argument field if omitted; skips malformed files with
                         console.warn; accepts *.yml and *.yaml
+  worktree.ts           — slugify(), getWorktreePath(), previewBranchName() (pure);
+                        createWorktree() (prune → dir-exists check → branch-exists check →
+                        git worktree add → copy gitignored files via fallback chain);
+                        deleteWorktree() (non-forced; detects uncommitted changes; recovery prune);
+                        deleteWorktreeForce(); listBranches() (git branch -a, strips origin/,
+                        deduplicates, sorts)
   __tests__/
     store.test.ts     — 18 tests; uses vi.hoisted mock pattern (see Testing Patterns below)
     window.test.ts    — hide/quit decision, single-instance decision
     binary-check.test.ts — 4 tests: found, not found, path trimming, empty stdout
-    ipc-handlers.test.ts — 19 tests: all M8+M9+M10 handler behaviors
+    ipc-handlers.test.ts — 26 tests: all M8+M9+M10+M11 handler behaviors
+                        (branch:validate, branch:preview, repo:listBranches added in M11)
     workspace.test.ts — 14 tests: .git dir included; worktree (.git file) excluded; symlink;
                         missing folder; empty folder; symbolic-ref branch; fallback main/master;
                         alphabetical sort; per-repo error resilience; .george-foreman dir
     workflow-loader.test.ts — 19 tests: all 3 sources; argument auto-detect (none/required/
                         explicit); null/missing dirs; YAML parse errors; Zod failures;
                         extension handling (.yml/.yaml); no-dedup across sources
+    worktree.test.ts  — 42 tests: slugify (6); getWorktreePath (2); previewBranchName (14,
+                        all prefix conditions + empty-argument cases); createWorktree (9,
+                        prune/checks/add/copy-files fallback chain); deleteWorktree (4,
+                        clean/uncommitted/failure+recovery); deleteWorktreeForce (2);
+                        listBranches (3, sort/dedup/error)
 
 src/renderer/src/
   theme.ts            — Design token object (bg, accent, status, text, border, space, font,

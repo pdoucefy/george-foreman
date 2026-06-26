@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json
 name: Implement Milestone
-description: Implement a milestone in the codebase using TDD, with a grilling session to produce a plan, and validation of the plan and implementation.
+description: Grill, plan, implement with TDD, test, and ship a milestone end-to-end.
 argument: required
 
 tasks:
@@ -18,21 +18,17 @@ tasks:
 
       Milestone to implement: {{argument}}
 
-  - name: Validate the plan
-    prompt: |
-      Audit the plan produced in the previous session against this checklist before
-      any code is written. If you find gaps, resolve them now (update the plan inline)
-      before declaring it approved.
-
-      Checklist:
-      - Every deliverable listed in the milestone spec is covered
-      - All plausible edge cases are identified (documented and undocumented)
-      - All doc updates are explicitly scoped: AGENTS.md, spec files, milestones.md
-      - Test strategy is complete: which behaviors are unit-testable, which need
-        integration tests, which require the user to test manually
+      Once grilling is complete, cross-reference the plan against the actual spec.
+      Read the relevant files in docs/spec/ and AGENTS.md, then verify and resolve
+      any gaps inline — do not present the plan until every item below passes:
+      - Every deliverable listed in the milestone spec is covered by the plan
+      - Every edge case is covered — both those documented in the spec and any additional
+        ones identified that are not in the spec
+      - All doc updates are explicitly scoped: which files, what changes
+      - Test strategy is complete: each behavior maps to a specific test
+        (unit / integration / manual)
+      - No spec section relevant to this milestone was overlooked
       - No blocking ambiguities remain that would stall implementation
-
-      Output the fully resolved and approved plan in full before proceeding.
 
   - name: Implement with TDD
     prompt: |
@@ -41,10 +37,11 @@ tasks:
 
       Rules:
       - Run the relevant test suite after each cycle; stay green before moving on
-      - Run both typechecks (pnpm tsc --noEmit -p tsconfig.node.json and tsconfig.web.json)
-        after every file change
+      - Run pnpm typecheck after every file change
       - Apply all doc updates from the plan (AGENTS.md, spec files, milestones.md marked [x])
       - Do not add speculative features or tests not in the approved plan
+      - If you encounter a blocker or ambiguity not covered by the plan, stop and ask
+        the user before proceeding
 
   - name: Validate the implementation
     prompt: |
@@ -54,33 +51,20 @@ tasks:
       Checklist:
       - Every file the plan said to create or modify exists and is correct
       - Every behavior the plan said to test has a passing test
-      - Both typechecks pass (pnpm tsc --noEmit -p tsconfig.node.json and tsconfig.web.json)
-      - The full test suite is green with no regressions
+      - Run both test suites and confirm they are green: pnpm test
+      - Run both typechecks and confirm they pass: pnpm typecheck
       - All doc updates are applied: AGENTS.md updated, spec files updated,
         milestones.md has the milestone marked [x]
+      - Run pnpm lint:fix; if any warnings remain that lint:fix cannot resolve, fix them manually
+      - Run pnpm format
+      - Verify pnpm lint (zero warnings, zero errors) and pnpm format:check (no files would be changed)
+      - Re-run pnpm test and pnpm typecheck to confirm lint/format changes broke nothing
 
       Output "IMPLEMENTATION APPROVED" only when every item on the checklist passes.
 
-  - name: Test and hand off to user
+  - name: Hand off to user
     prompt: |
-      Run all automated checks:
-      - Full test suite: pnpm vitest run --config vitest.config.ts and vitest.config.web.ts
-      - Both typechecks: pnpm tsc --noEmit -p tsconfig.node.json and tsconfig.web.json
-
-      Then identify everything that cannot be verified without a running app or human
+      Identify everything that cannot be verified without a running app or human
       interaction. For each such item, write a clear, numbered step the user can follow.
       Ask the user to perform those steps and report back. Wait for their confirmation
       before proceeding to the next task.
-
-  - name: Lint and format
-    prompt: |
-      Run pnpm lint:fix to auto-fix any ESLint warnings. If any warnings remain that
-      lint:fix cannot resolve, fix them manually.
-
-      Then run pnpm format to apply Prettier across the codebase.
-
-      Verify both pass cleanly:
-      - pnpm lint (zero warnings, zero errors)
-      - pnpm format:check (no files would be changed)
-
-      Fix anything that fails before done.

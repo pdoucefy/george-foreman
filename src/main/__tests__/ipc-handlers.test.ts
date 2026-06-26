@@ -100,6 +100,20 @@ vi.mock('../workflow-loader.ts', () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Mock worktree
+// ---------------------------------------------------------------------------
+
+const { mockListBranches, mockPreviewBranchName } = vi.hoisted(() => ({
+  mockListBranches: vi.fn(),
+  mockPreviewBranchName: vi.fn(),
+}));
+
+vi.mock('../worktree.ts', () => ({
+  listBranches: mockListBranches,
+  previewBranchName: mockPreviewBranchName,
+}));
+
+// ---------------------------------------------------------------------------
 // Mock @electron-toolkit/utils — expose isDev flag for dev:clear-store branch
 // ---------------------------------------------------------------------------
 
@@ -345,6 +359,133 @@ describe('registerIpcHandlers', () => {
       const result = await handler({}, '/workspace/my-repo');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('branch:validate', () => {
+    it('returns { valid: true } for a valid unique branch name', () => {
+      const handler = getHandler('branch:validate');
+      const result = handler(
+        {},
+        { repoPath: '/repos/app', branchName: 'AV-123/my-feature', activeJobIds: [] },
+      );
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('returns { valid: false } for a branch name with invalid characters', () => {
+      const handler = getHandler('branch:validate');
+      const result = handler(
+        {},
+        { repoPath: '/repos/app', branchName: 'feature with spaces', activeJobIds: [] },
+      );
+      expect(result).toMatchObject({ valid: false, error: expect.stringContaining('invalid') });
+    });
+
+    it('returns { valid: false } for a branch name exceeding 250 characters', () => {
+      const handler = getHandler('branch:validate');
+      const longName = 'a'.repeat(251);
+      const result = handler(
+        {},
+        { repoPath: '/repos/app', branchName: longName, activeJobIds: [] },
+      );
+      expect(result).toMatchObject({ valid: false, error: expect.stringContaining('250') });
+    });
+
+    it('returns { valid: false } when branch matches an active job', () => {
+      dataRef.current['jobs'] = {
+        'job-1': {
+          id: 'job-1',
+          branchName: 'AV-123/my-feature',
+          status: 'running',
+          repoPath: '/repos/app',
+          repoName: 'app',
+          worktreePath: '/ws/app--AV-123--my-feature',
+          worktreeDeleted: false,
+          baseBranch: 'main',
+          workflowName: 'Implement',
+          argument: 'AV-123',
+          port: null,
+          orchestratorSessionId: null,
+          tasks: [],
+          createdAt: Date.now(),
+          completedAt: null,
+          archivedAt: null,
+          errorMessage: null,
+          pendingPermission: null,
+        },
+      };
+      const handler = getHandler('branch:validate');
+      const result = handler(
+        {},
+        { repoPath: '/repos/app', branchName: 'AV-123/my-feature', activeJobIds: ['job-1'] },
+      );
+      expect(result).toMatchObject({ valid: false, error: expect.stringContaining('active') });
+    });
+
+    it('returns { valid: true } when branch matches only a completed job', () => {
+      dataRef.current['jobs'] = {
+        'job-1': {
+          id: 'job-1',
+          branchName: 'AV-123/my-feature',
+          status: 'completed',
+          repoPath: '/repos/app',
+          repoName: 'app',
+          worktreePath: '/ws/app--AV-123--my-feature',
+          worktreeDeleted: false,
+          baseBranch: 'main',
+          workflowName: 'Implement',
+          argument: 'AV-123',
+          port: null,
+          orchestratorSessionId: null,
+          tasks: [],
+          createdAt: Date.now(),
+          completedAt: Date.now(),
+          archivedAt: null,
+          errorMessage: null,
+          pendingPermission: null,
+        },
+      };
+      const handler = getHandler('branch:validate');
+      const result = handler(
+        {},
+        { repoPath: '/repos/app', branchName: 'AV-123/my-feature', activeJobIds: ['job-1'] },
+      );
+      expect(result).toEqual({ valid: true });
+    });
+  });
+
+  describe('branch:preview', () => {
+    it('calls previewBranchName with params and githubHandle from store', () => {
+      dataRef.current['config'] = {
+        ...(dataRef.current['config'] as object),
+        githubHandle: 'pdoucet',
+      };
+      mockPreviewBranchName.mockReturnValue('pdoucet/my-feature');
+
+      const handler = getHandler('branch:preview');
+      const result = handler(
+        {},
+        { argument: 'my feature', workflowName: 'Implement', githubHandle: '' },
+      );
+
+      expect(mockPreviewBranchName).toHaveBeenCalledWith({
+        argument: 'my feature',
+        workflowName: 'Implement',
+        githubHandle: 'pdoucet',
+      });
+      expect(result).toBe('pdoucet/my-feature');
+    });
+  });
+
+  describe('repo:listBranches', () => {
+    it('calls listBranches with repoPath and returns the result', async () => {
+      mockListBranches.mockResolvedValue(['main', 'feature-a']);
+
+      const handler = getHandler('repo:listBranches');
+      const result = await handler({}, '/repos/my-app');
+
+      expect(mockListBranches).toHaveBeenCalledWith('/repos/my-app');
+      expect(result).toEqual(['main', 'feature-a']);
     });
   });
 });
