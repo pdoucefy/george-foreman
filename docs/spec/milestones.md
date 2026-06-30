@@ -29,7 +29,7 @@ Implement in this order.
 - [x] **M9.** Workspace scanning (`workspace.ts`): `.git` dir detection, symlink support, default branch detection
 - [x] **M10.** Workflow YAML loading (`workflow-loader.ts`): all three sources + `.george-foreman/` parsing + `{{argument}}` auto-detection + validation + create `workflows/workflow-schema.json` and `workflows/example.yml`
 - [x] **M11.** Git worktree management (`worktree.ts`): create, delete, path generation, pre-creation checks, `.george-foreman/copy-files` file copying
-- [ ] **M12.** OpenCode process management (`opencode-process.ts`): spawn, port discovery, health polling, crash handling (one auto-restart, then fail), process log capture (ring buffer)
+- [x] **M12.** OpenCode process management (`opencode-process.ts`): spawn, port discovery, health polling, crash handling (one auto-restart, then fail), process log capture (ring buffer)
 - [ ] **M13.** OpenCode HTTP API client (`opencode.ts`): all endpoints, retry logic, SSE client (Node.js streaming), reconnect + status poll
 - [ ] **M14.** Job creation flow — UI only (steps 1–4): repo select, workflow select, argument input, branch name preview + confirm + advanced base-branch selector
 - [ ] **M15.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from [Job Creation Flow](./job-creation.md#job-creation-flow)), crash handling, startup restore + auto-resume
