@@ -2,34 +2,38 @@
 
 > Not in scope for the current build. Captured here to avoid re-litigating.
 
-- **Repo-specific configs** — additional per-repo config (default model, branch prefix overrides, etc.)
+- **Notification on completion** — optional macOS notification when a job completes (currently:
+  only `needs_attention` fires a notification)
+- **Mode Selection** — Allow users to select the starting agent mode (ie build/plan) when creating a new job.
+  This would require adding a new field to the workflow YAML schema, updating the UI to allow users to select the mode, and passing this information to the OpenCode orchestrator when creating the job.
+- **Per-step workflow config** — allow each workflow step to specify its own model, permission defaults, and other OpenCode settings.
+  Currently, all steps inherit the same config from the repo-level `.george-foreman/opencode-config.json`.
+  This is a potential future enhancement to allow more granular control over how each step in a workflow is executed and potentially save on costs.
+- **Additional Per-repo configs** — Additional pre-repo configs and OpenCode settings.
+  Stored as `.george-foreman/opencode-config.json`, which is merged or copied into the worktree at creation time alongside `.env` files.
+  Could be shipped with a UI JSON editor in Settings or not.
+  - Default model
+  - Model selection for the orchestrator (provider + model ID)
+  - Default branch
+  - Branch prefix overrides
+  - Permission defaults (pre-allow `bash` / `edit` / `webfetch` so jobs don't keep prompting)
+  - Custom OpenCode rules and tools (e.g. `rules.json`, `tools.json`) for the orchestrator to use
 - **Additional themes** — the design token system in `theme.ts` is designed to make
   theme variants straightforward. Potential themes: "Grill/BBQ" (warm amber, charcoal),
   "Futuristic orange" (neon, dark), "Clean steel" (minimal, neutral). Theme switcher in
   Settings.
-- **TDD workflows** — specialized workflow type that verifies all changes pass tests + builds
-  and fully implement the requested feature including undocumented edge cases
+- **Dock icon flashes on startup and quit** — `app.dock.setIcon()` is called in `app.whenReady()` but macOS briefly shows the default Electron icon before and after the custom icon is applied. Possible approaches: embed the icon directly in the app bundle's `Info.plist` via `electron-builder` `extraInfo` config, or explore whether setting the icon earlier (before `app.whenReady()`) is possible in a future Electron version.
 - **Re-run from Archive** — "Re-run" clones the job config and starts a new job, preserving
   the original in archive (currently: archive is read-only history)
-- **Notification on completion** — optional macOS notification when a job completes (currently:
-  only `needs_attention` fires a notification)
 - **Workflow argument schema** — structured argument definitions (multiple named params, types,
   validation) declared in the YAML; currently a single free-text `{{argument}}`
-- **Job templates** — save a job config (repo + workflow + argument) as a named template for
-  quick reuse
-- **OAuth GitHub integration** — replace plain-text GitHub handle with OAuth login; enables PR
-  creation, issue linking, richer branch metadata
-- **Per-repo `.george-foreman/` extended config** — beyond workflows and copy-files: default
-  model, branch prefix overrides, custom opencode rules/tools
-- **Per-repo OpenCode config controls** — structured fields (not a raw JSON editor) for the
-  OpenCode settings George Foreman most needs to influence on a per-repo basis:
-  - Model selection for the orchestrator (provider + model ID)
-  - Permission defaults (pre-allow `bash` / `edit` / `webfetch` so jobs don't keep prompting)
-    Stored as `.george-foreman/opencode-config.json`, which is merged or copied into the worktree
-    at creation time alongside `.env` files. A raw JSON editor is explicitly out of scope —
-    structured UI controls for specific knobs only.
-- **Concurrent job limit** — currently unlimited; future: user-configurable soft limit in
-  Settings with UI enforcement
+- **Job templates** — save a job config (repo + workflow + argument) as a named template for quick reuse.
+  Could be stored in the `george-foreman` repo, `.george-foreman/` folders and/or in a global `~/.george-foreman/templates/`
+- **OAuth GitHub integration** — replace plain-text GitHub handle with OAuth login; enables PR creation, issue linking, richer branch metadata
+- **Concurrent job limit** — currently unlimited; future: user-configurable soft limit in Settings with UI enforcement
+- **Token usage tracking** — track and display token consumption per job and over time. OpenCode SSE events include token counts in message metadata;
+  accumulate these per job and expose aggregate stats (total tokens, cost estimate, breakdown by job/workflow/repo) in a dedicated panel or Settings page.
+  Useful for understanding cost at scale and identifying expensive workflows.
 - **Jira ticket title lookup for AV branch names** — currently AV branches use the workflow
   name as the slug (e.g. `AV-123/Implement-Feature`). Future: look up the Jira ticket title
   via a CLI (e.g. `jira issue view AV-123 --json`) and use it as the second slug instead
@@ -68,6 +72,3 @@
   or polyfill where needed (e.g. Windows taskbar badge via overlay icon, Linux notifications via
   `libnotify`). Would also require Windows/Linux CI runners and packaging targets in
   `electron-builder` config.
-- **Mode Selection** — Allow users to select the starting agent mode (ie build/plan) when creating a new job. This would require adding a new field to the workflow YAML schema, updating the UI to allow users to select the mode, and passing this information to the OpenCode orchestrator when creating the job.
-- **Token usage tracking** — track and display token consumption per job and over time. OpenCode SSE events include token counts in message metadata; accumulate these per job and expose aggregate stats (total tokens, cost estimate, breakdown by job/workflow/repo) in a dedicated panel or Settings page. Useful for understanding cost at scale and identifying expensive workflows.
-- **Dock icon flashes on startup and quit** — `app.dock.setIcon()` is called in `app.whenReady()` but macOS briefly shows the default Electron icon before and after the custom icon is applied. Possible approaches: embed the icon directly in the app bundle's `Info.plist` via `electron-builder` `extraInfo` config, or explore whether setting the icon earlier (before `app.whenReady()`) is possible in a future Electron version.
