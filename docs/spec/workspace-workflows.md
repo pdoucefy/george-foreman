@@ -26,15 +26,7 @@
 
 ### Result stored in memory (not persisted)
 
-```ts
-const schRepo = z.object({
-  name: z.string(), // directory basename
-  path: z.string(), // absolute path
-  defaultBranch: z.string(), // e.g. "main"
-});
-
-type Repo = z.infer<typeof schRepo>;
-```
+See `src/shared/types/repo.ts`.
 
 ### Edge cases
 
@@ -90,105 +82,10 @@ Fields:
 
 ### Schema validation (`workflows/workflow-schema.json`)
 
-A JSON Schema (Draft 7) file is shipped with the app at `workflows/workflow-schema.json`. It
-enables VS Code (and any editor with YAML Schema support) to validate workflow files with
-inline errors and autocompletion.
-
-#### Schema definition
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json",
-  "title": "George Foreman Workflow",
-  "description": "A multi-step AI agent workflow definition for George Foreman",
-  "type": "object",
-  "required": ["name", "tasks"],
-  "additionalProperties": false,
-  "properties": {
-    "name": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Display name shown in the workflow picker"
-    },
-    "description": {
-      "type": "string",
-      "description": "Optional description shown below the name in the workflow picker"
-    },
-    "argument": {
-      "type": "string",
-      "enum": ["required", "optional", "none"],
-      "description": "Controls the argument input at job creation. 'required': shown and must be non-empty. 'optional': shown but may be blank. 'none': hidden entirely. Defaults to 'required' if any prompt contains {{argument}}, otherwise 'none'."
-    },
-    "tasks": {
-      "type": "array",
-      "minItems": 1,
-      "description": "Ordered list of tasks to execute sequentially",
-      "items": {
-        "type": "object",
-        "required": ["name", "prompt"],
-        "additionalProperties": false,
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Task display name shown in the session panel task list"
-          },
-          "prompt": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Prompt sent to the subagent. Use {{argument}} as a placeholder for the user-supplied argument."
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-#### Using the schema in VS Code
-
-**Option 1 — `$schema` comment** (per-file, portable, recommended for `.george-foreman/workflows/`):
-
-```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json
-name: Implement Feature
-description: Full cycle from tests to implementation to docs
-tasks:
-  - name: Write tests
-    prompt: |
-      Write tests for: {{argument}}
-```
-
-**Option 2 — `.vscode/settings.json`** (applies automatically to all workflow files in the repo):
-
-```json
-{
-  "yaml.schemas": {
-    "https://raw.githubusercontent.com/pdoucefy/george-foreman/main/workflows/workflow-schema.json": [
-      ".george-foreman/workflows/*.yml",
-      ".george-foreman/workflows/*.yaml"
-    ]
-  }
-}
-```
-
-The schema is hosted publicly at its `$id` URL so users never need a local copy — VS Code
-fetches and caches it automatically. The built-in `workflows/example.yml` includes the
-`$schema` comment as a living example for users to copy.
-
-> **Hosting requirement:** the schema URL only works once the `george-foreman` repo is public
-> on GitHub and `workflows/workflow-schema.json` is committed to `main`. No extra deployment
-> steps are needed — GitHub serves raw file content automatically. This is handled as part of
-> **M2** (making the repo public + CI pipeline). During development (before the repo
-> is public), use a local relative path instead:
->
-> ```yaml
-> # yaml-language-server: $schema=../../../path/to/george-foreman/workflows/workflow-schema.json
-> ```
->
-> **Note:** requires the `redhat.vscode-yaml` VS Code extension (extremely widely installed;
-> included in most default VS Code setups).
+A JSON Schema (Draft 7) file is shipped at `workflows/workflow-schema.json`. It enables VS Code
+and any editor with YAML Schema support to validate workflow files with inline errors and
+autocompletion. The built-in `workflows/example.yml` includes the `$schema` comment as a
+living example. Read `workflows/workflow-schema.json` directly for the current schema.
 
 ### Three workflow sources
 
@@ -216,33 +113,7 @@ Responsibilities:
 3. Validate required fields; skip malformed files with a `console.warn` (do not crash)
 4. Return `Workflow[]`
 
-```ts
-const schWorkflowSource = z.enum(['repo', 'user', 'builtin']);
-
-const schWorkflowArgument = z.enum(['required', 'optional', 'none']);
-
-const schWorkflowTask = z.object({
-  name: z.string().min(1),
-  prompt: z.string().min(1),
-});
-
-const schWorkflow = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  // argument field is optional in the YAML; workflow-loader.ts auto-detects if omitted:
-  // 'required' if any prompt contains {{argument}}, otherwise 'none'
-  argument: schWorkflowArgument.optional(),
-  tasks: z.array(schWorkflowTask).min(1),
-  source: schWorkflowSource,
-  // sourceLabel is derived at display time via a WorkflowSource → string utility map,
-  // not stored in the object
-});
-
-type WorkflowSource = z.infer<typeof schWorkflowSource>;
-type WorkflowArgument = z.infer<typeof schWorkflowArgument>;
-type WorkflowTask = z.infer<typeof schWorkflowTask>;
-type Workflow = z.infer<typeof schWorkflow>;
-```
+See `src/shared/types/workflow.ts` for the `Workflow`, `WorkflowTask`, `WorkflowSource`, and `WorkflowArgument` Zod schemas.
 
 ### `.george-foreman/` per-repo config directory
 

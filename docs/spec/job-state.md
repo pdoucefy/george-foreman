@@ -4,64 +4,7 @@
 
 ### Job status values
 
-```ts
-const schJobStatus = z.enum([
-  'pending', // Created in store; worktree + process not yet ready
-  'running', // opencode serve healthy; orchestrator active
-  'needs_attention', // Waiting for user permission response
-  'completed', // All tasks finished successfully
-  'failed', // Fatal error (crash × 2, API error, setup failure)
-  'stopped', // User manually stopped
-]);
-
-type JobStatus = z.infer<typeof schJobStatus>;
-```
-
-### Complete Job type
-
-```ts
-const schPendingPermission = z.object({
-  permissionId: z.string(),
-  description: z.string(), // Human-readable (from Permission.title)
-  permissionType: z.string(), // e.g. 'bash', 'edit', 'webfetch'
-  pattern: z.union([z.string(), z.array(z.string())]).optional(),
-});
-
-const schTaskState = z.object({
-  index: z.number().int().nonnegative(), // 0-based
-  name: z.string(),
-  status: z.enum(['pending', 'in_progress', 'completed']),
-  subagentSessionId: z.string().nullable(),
-});
-
-const schJob = z.object({
-  id: z.string(), // 'job-<crypto.randomUUID()>'
-  repoName: z.string(), // Directory basename of the repo
-  repoPath: z.string(), // Absolute path to source repo
-  worktreePath: z.string(), // Absolute path to worktree directory.
-  // After deletion, this value is RETAINED for display/audit purposes.
-  // Always check worktreeDeleted before accessing the filesystem at this path.
-  worktreeDeleted: z.boolean(), // true after worktree is deleted; worktreePath still holds old path
-  branchName: z.string(), // Full branch name (e.g. 'av-123/the-auth-module')
-  baseBranch: z.string(), // Branch the worktree was created from
-  workflowName: z.string(), // Display name of the workflow used
-  argument: z.string(), // User-supplied argument text
-  status: schJobStatus,
-  port: z.number().nullable(), // Assigned opencode serve port
-  orchestratorSessionId: z.string().nullable(),
-  tasks: z.array(schTaskState),
-  createdAt: z.number(), // Unix timestamp ms
-  completedAt: z.number().nullable(), // Set when status becomes completed/failed/stopped
-  archivedAt: z.number().nullable(), // null = on Dashboard; set when user archives or job completes
-  errorMessage: z.string().nullable(), // Last error (for failed jobs)
-  pendingPermission: schPendingPermission.nullable(),
-  // Note: no pendingQuestion field — free-text input is always available while running
-});
-
-type PendingPermission = z.infer<typeof schPendingPermission>;
-type TaskState = z.infer<typeof schTaskState>;
-type Job = z.infer<typeof schJob>;
-```
+`JobStatus` is a Zod enum. See `src/shared/types/job.ts` for the full `Job`, `TaskState`, `JobStatus` and `PendingPermission` schemas.
 
 ### State transitions
 
@@ -105,53 +48,15 @@ completed | failed | stopped
 
 ## Job State Persistence (electron-store)
 
-### Complete store schema
+### Store schema
 
-```ts
-const schWindowBounds = z.object({
-  x: z.number(),
-  y: z.number(),
-  width: z.number(),
-  height: z.number(),
-});
-
-const schConfig = z.object({
-  workspaceFolder: z.string(),
-  githubHandle: z.string(),
-  userWorkflowsFolder: z.string().nullable(),
-  defaultCopyGlobs: z.string(), // Newline-separated glob patterns
-  windowBounds: schWindowBounds.nullable(),
-});
-
-const schStore = z.object({
-  schemaVersion: z.literal(1),
-  config: schConfig,
-  jobs: z.record(schJob), // keyed by jobId
-  jobLogs: z.record(z.string()), // keyed by jobId — accumulated stdout+stderr
-});
-
-type Config = z.infer<typeof schConfig>;
-type StoreSchema = z.infer<typeof schStore>;
-```
+See `src/shared/types/store.ts` for the full `StoreSchema`, `Config`, and `WindowBounds` Zod schemas.
 
 ### Schema versioning and migration
 
-On app startup, in `store.ts`:
-
-```ts
-const CURRENT_SCHEMA_VERSION = 1;
-
-const stored = store.get('schemaVersion');
-if (stored !== CURRENT_SCHEMA_VERSION) {
-  // Clear all job data; preserve config if it exists
-  const config = store.get('config');
-  store.clear();
-  if (config) store.set('config', config);
-  store.set('schemaVersion', CURRENT_SCHEMA_VERSION);
-}
-```
-
-Rationale: no production data to preserve in v1. Config is preserved across migrations.
+On app startup, `runStartupMigration()` in `store.ts` checks `schemaVersion`. On mismatch:
+clear all job data, preserve `config`, reset version to current. See `src/main/store.ts` for
+the implementation.
 
 ### Write triggers
 

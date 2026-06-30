@@ -99,13 +99,7 @@ Accessible from:
 - **`Cmd+,`** — standard macOS keyboard shortcut (registered as a global menu accelerator)
 - Settings gear icon (⚙) in the app top bar
 
-Both send the `navigate:settings` IPC push from main to renderer.
-
-`Cmd+,` is implemented via `app.applicationMenu` with a `MenuItem` entry:
-
-```ts
-{ label: 'Preferences…', accelerator: 'CmdOrCtrl+,', click: () => mainWindow.webContents.send('navigate:settings') }
-```
+Both send the `navigate:settings` IPC push from main to renderer (via `app.applicationMenu` accelerator `CmdOrCtrl+,`).
 
 Rendered as a full-screen panel replacing the content area (not a modal).
 
@@ -131,10 +125,5 @@ button. Validation errors show inline; invalid values are not persisted.
 ### Navigation back
 
 A "← Back" link or button at the top of the Settings panel returns to the previously active
-tab (Dashboard or Archive).
-
-> **Known limitation:** the macOS two-finger swipe back gesture and mouse back button both
-> trigger `history.back()` in the Electron renderer. Since the app has no client-side router
-> and pushes no history entries, these gestures do nothing. The intended navigation mechanisms
-> are the "← Back" button and `Cmd+,` (which toggles Settings). Browser-like navigation
-> (swipe, mouse back/forward) is a backlog item — see [Backlog](./backlog.md).
+tab (Dashboard or Archive). Browser-like navigation (two-finger swipe, mouse back/forward) is
+a backlog item — see [Backlog](./backlog.md).

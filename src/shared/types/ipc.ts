@@ -22,8 +22,9 @@ export const schSessionMessage = z.object({
 });
 export type SessionMessage = z.infer<typeof schSessionMessage>;
 
-// ElectronAPI: window.api shape declared for renderer TypeScript.
-
+/**
+ * ElectronAPI: window.api shape declared for renderer TypeScript.
+ */
 export type ElectronAPI = {
   // Invoke (renderer → main, returns Promise)
   workspace: {
@@ -101,7 +102,9 @@ export type ElectronAPI = {
   onNavigateJob: (cb: (jobId: string) => void) => () => void;
   onNavigateSettings: (cb: () => void) => () => void;
 
-  // Dev-only helpers — available in development builds only (is.dev === true)
+  /**
+   * Dev-only helpers — available in development builds only (is.dev === true)
+   */
   dev?: {
     clearStore: () => Promise<void>;
     resetAndReload: () => Promise<void>;

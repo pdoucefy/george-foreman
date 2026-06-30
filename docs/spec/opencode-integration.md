@@ -262,24 +262,8 @@ Rules:
 
 ### Structured event types
 
-```ts
-const schOrchestratorEvent = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('task_started'),
-    task_index: z.number().int().nonnegative(),
-    session_id: z.string(),
-  }),
-  z.object({
-    type: z.literal('subagent_spawned'),
-    task_index: z.number().int().nonnegative(),
-    session_id: z.string(),
-  }),
-  z.object({ type: z.literal('task_completed'), task_index: z.number().int().nonnegative() }),
-  z.object({ type: z.literal('workflow_completed') }),
-]);
-
-type OrchestratorEvent = z.infer<typeof schOrchestratorEvent>;
-```
+`OrchestratorEvent` is a discriminated union on `type`: `task_started`, `subagent_spawned`,
+`task_completed`, `workflow_completed`. See `src/shared/types/sse.ts` for the Zod schema.
 
 ### Structured event handling
 
@@ -324,37 +308,9 @@ display. All other content (including lines that failed JSON parsing) → displa
 
 ### Permission detection
 
-OpenCode emits `permission.updated` events through the SSE stream. The full wire shape
-(verified from the OpenCode SDK `types.gen.ts`):
-
-```ts
-// SSE GlobalEvent wrapper
-const schGlobalEvent = z.object({
-  directory: z.string(), // project directory path
-  payload: z.discriminatedUnion('type', [
-    z.object({ type: z.literal('permission.updated'), properties: z.unknown() }),
-    z.object({ type: z.literal('session.idle'), properties: z.unknown() }),
-    z.object({ type: z.literal('session.error'), properties: z.unknown() }),
-    z.object({ type: z.string(), properties: z.unknown() }),
-  ]),
-});
-
-// Permission (payload.properties for permission.updated events)
-const schPermission = z.object({
-  id: z.string(), // permissionId — use for POST /permissions/:permissionID
-  type: z.string(), // e.g. 'bash', 'edit', 'webfetch', 'doom_loop'
-  pattern: z.union([z.string(), z.array(z.string())]).optional(),
-  sessionID: z.string(), // session that triggered the permission
-  messageID: z.string(),
-  callID: z.string().optional(), // tool call that triggered this
-  title: z.string(), // human-readable description — display this to user
-  metadata: z.record(z.unknown()),
-  time: z.object({ created: z.number() }), // unix epoch ms
-});
-
-type GlobalEvent = z.infer<typeof schGlobalEvent>;
-type Permission = z.infer<typeof schPermission>;
-```
+OpenCode emits `permission.updated` events through the SSE stream. The `GlobalEvent` wrapper
+and `Permission` Zod schemas are in `src/shared/types/sse.ts` — read that file for the full
+wire shape.
 
 When the app receives a `permission.updated` SSE event, check if `properties.sessionID`
 matches any session belonging to this job — the orchestrator session **or** any known subagent
@@ -387,17 +343,8 @@ On response sent: clear `job.pendingPermission`; set `job.status = 'running'`; p
 
 ### `session.idle` fallback completion / unexpected termination
 
-`EventSessionIdle` fires on the orchestrator session when it finishes its turn. Use this as a
-fallback in case `workflow_completed` was never emitted:
-
-```ts
-const schEventSessionIdle = z.object({
-  type: z.literal('session.idle'),
-  properties: z.object({ sessionID: z.string() }),
-});
-
-type EventSessionIdle = z.infer<typeof schEventSessionIdle>;
-```
+`EventSessionIdle` fires on the orchestrator session when it finishes its turn. Use as a
+fallback in case `workflow_completed` was never emitted. Schema: `src/shared/types/sse.ts`.
 
 **On `session.idle` for the orchestrator session:**
 
@@ -422,19 +369,9 @@ type EventSessionIdle = z.infer<typeof schEventSessionIdle>;
 
 ### `session.error` — structured error from orchestrator
 
-```ts
-const schEventSessionError = z.object({
-  type: z.literal('session.error'),
-  properties: z.record(z.unknown()), // shape not fully documented; parse defensively
-});
-
-type EventSessionError = z.infer<typeof schEventSessionError>;
-```
-
-**On `session.error` for the orchestrator session:**
-
-- Mark job `failed` with the error message from the event
-- Persist; send `job:updated` IPC
+On `session.error` for the orchestrator session: mark job `failed` with the error message from
+the event. Parse defensively — the properties shape is not fully documented. Schema:
+`src/shared/types/sse.ts`.
 
 ### Free-text messaging (always available while running)
 

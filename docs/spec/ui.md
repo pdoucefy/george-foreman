@@ -9,99 +9,7 @@ The app manages powerful AI agents — the UI should feel like a forge control p
 
 ### Design Tokens (`src/renderer/src/theme.ts`)
 
-```ts
-export const theme = {
-  // Background layers
-  bg: {
-    app: '#141414', // App background — near-black steel
-    panel: '#1c1c1c', // Panel / sidebar surface
-    card: '#222222', // Job card surface
-    elevated: '#2a2a2a', // Elevated elements (modals, dropdowns)
-    input: '#1a1a1a', // Input fields
-  },
-
-  // Accent — forge flame orange
-  accent: {
-    primary: '#e8621a', // Primary CTA, active state, flame
-    warm: '#f0832a', // Hover state for primary
-    glow: 'rgba(232, 98, 26, 0.25)', // Glow/shadow on focus
-  },
-
-  // Status colors
-  status: {
-    attention: '#f0a020', // Amber — needs attention (permission pending)
-    thinking: '#4a90d9', // Steel blue — running / processing
-    completed: '#3a9a5c', // Forge green — completed
-    failed: '#c0392b', // Ember red — failed
-    stopped: '#6b7280', // Cool grey — stopped
-  },
-
-  // Text
-  text: {
-    primary: '#e8e4de', // Warm off-white — primary text
-    secondary: '#9a9390', // Muted warm grey — secondary / labels
-    disabled: '#4a4745', // Disabled text
-    inverse: '#141414', // Text on light/accent backgrounds
-  },
-
-  // Border
-  border: {
-    subtle: '#2e2e2e', // Subtle separator
-    default: '#3a3a3a', // Default border
-    strong: '#555555', // Prominent border
-    accent: '#e8621a', // Accent border (focused, selected)
-  },
-
-  // Spacing scale (multiples of 4px)
-  space: {
-    1: '4px',
-    2: '8px',
-    3: '12px',
-    4: '16px',
-    5: '20px',
-    6: '24px',
-    8: '32px',
-    10: '40px',
-    12: '48px',
-  },
-
-  // Typography
-  font: {
-    sans: '"Barlow", sans-serif',
-    condensed: '"Barlow Condensed", sans-serif',
-    mono: '"JetBrains Mono", monospace',
-    display: '"Rubik Distressed", serif', // app title only
-  },
-
-  // Font size scale
-  fontSize: {
-    xs: '11px', // labels, badges, timestamps
-    sm: '12px', // secondary text, metadata
-    md: '13px', // body / default
-    lg: '15px', // card titles, section headings
-    xl: '18px', // panel headers
-    '2xl': '22px', // page titles (onboarding)
-  },
-
-  // Border radius
-  radius: {
-    sm: '4px',
-    md: '6px',
-    lg: '10px',
-    full: '9999px',
-  },
-
-  // Elevation (box-shadow)
-  shadow: {
-    sm: '0 1px 3px rgba(0,0,0,0.5)',
-    md: '0 4px 12px rgba(0,0,0,0.6)',
-    lg: '0 8px 24px rgba(0,0,0,0.7)',
-    glow: '0 0 12px rgba(232, 98, 26, 0.4)',
-  },
-} as const;
-
-export type Theme = typeof theme;
-```
+Token groups: `bg`, `accent`, `status`, `text`, `border`, `space`, `font`, `fontSize`, `radius`, `shadow`. Read `src/renderer/src/theme.ts` directly for current values.
 
 ### Status Pill Colors
 
@@ -130,28 +38,7 @@ export type Theme = typeof theme;
 
 ### Font imports (`src/renderer/src/main.tsx`)
 
-Fonts are imported once at the renderer entry point and bundled by electron-vite — no CDN
-requests at runtime (correct for an Electron app):
-
-```ts
-// Barlow — weights used in the app
-// bold
-// Barlow Condensed — for dense UI elements
-import '@fontsource/barlow-condensed/400.css';
-import '@fontsource/barlow-condensed/500.css';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow/400.css';
-// regular
-import '@fontsource/barlow/500.css';
-// medium
-import '@fontsource/barlow/600.css';
-// semibold
-import '@fontsource/barlow/700.css';
-// JetBrains Mono — for code blocks
-import '@fontsource/jetbrains-mono/400.css';
-// Rubik Distressed — app title only
-import '@fontsource/rubik-distressed/400.css';
-```
+Fonts are imported once at the renderer entry point and bundled by electron-vite — no CDN requests at runtime (correct for an Electron app)
 
 ---
 
@@ -193,8 +80,7 @@ App.tsx
 
 ### Dock
 
-- Badge: `app.dock.setBadge(String(count))` where count = `needs_attention` jobs (empty string when 0)
-  - Updated on every job status change; always current regardless of window visibility
+- Badge: `app.dock.setBadge(String(count))` where count = `needs_attention` jobs (empty string when 0); updated on every job status change
 - Click: shows and focuses the window (standard macOS Dock behavior; no explicit handler needed)
 
 ### Nav bar
@@ -531,6 +417,4 @@ For both notification types:
 
 ### Dock badge
 
-- `app.dock.setBadge(String(count))` where count = `needs_attention` jobs (empty string when 0)
-- Recalculated on every job status change
-- Always current regardless of window focus or visibility
+See [App Startup & Lifecycle](./app-lifecycle.md#app-startup--lifecycle) — Dock badge behavior is defined there.

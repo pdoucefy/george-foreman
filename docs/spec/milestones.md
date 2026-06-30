@@ -1,6 +1,6 @@
 # Implementation Milestones
 
-> **Maintenance rule:** Mark `[x]` when a milestone is complete. Update `AGENTS.md` and the relevant spec files to reflect any new files, conventions, or gotchas discovered during implementation.
+> **Maintenance rule:** Mark `[x]` when a milestone is complete
 
 Implement in this order.
 

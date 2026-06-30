@@ -8,6 +8,7 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin({ exclude: ['electron-store'] })],
     resolve: {
       alias: {
+        // @shared/types must come before @shared — more-specific alias must win
         '@shared/types': resolve('src/shared/types/index.ts'),
         '@shared': resolve('src/shared'),
       },

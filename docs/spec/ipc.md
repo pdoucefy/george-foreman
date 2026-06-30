@@ -126,181 +126,23 @@ Defined in `src/shared/ipc.ts`. Implemented in `src/preload/index.ts` via `conte
 'navigate:settings'   → () => void    // Settings gear / Cmd+, → show Settings panel
 ```
 
-## Types in `src/shared/types.ts`
+## Types in `src/shared/types/`
 
-All types from [Workflow System](./workspace-workflows.md#workflow-system), [Job Creation](./job-creation.md#job-creation-flow), [Job Lifecycle & State Machine](./job-state.md#job-lifecycle--state-machine), plus:
-
-```ts
-const schJobCreateParams = z.object({
-  repoPath: z.string(),
-  workflowName: z.string(),
-  workflowTasks: z.array(schWorkflowTask),
-  argument: z.string(),
-  branchName: z.string(),
-  baseBranch: z.string(),
-});
-
-const schMessagePart = z.object({
-  type: z.enum(['text', 'tool_call', 'tool_result']),
-  text: z.string().optional(),
-});
-
-const schSessionMessage = z.object({
-  id: z.string(),
-  role: z.enum(['user', 'assistant']),
-  parts: z.array(schMessagePart),
-  createdAt: z.number(),
-});
-
-type JobCreateParams = z.infer<typeof schJobCreateParams>;
-type MessagePart = z.infer<typeof schMessagePart>;
-type SessionMessage = z.infer<typeof schSessionMessage>;
-```
+All types referenced above are defined in `src/shared/types/`. Read those files directly for current schemas — the spec does not duplicate them.
 
 ## `window.api` — typed IPC bridge
 
 `src/preload/index.ts` exposes a single `window.api` object via `contextBridge`. No raw
-channel strings appear in renderer code.
-
-```ts
-// Shape of window.api (defined in preload, declared in src/shared/types.ts for TypeScript)
-type ElectronAPI = {
-  // Invoke (renderer → main, returns Promise)
-  workspace: {
-    scan: () => Promise<Repo[]>;
-  };
-  workflow: {
-    list: (repoPath: string) => Promise<Workflow[]>;
-  };
-  settings: {
-    get: () => Promise<Config>;
-    set: (partial: Partial<Config>) => Promise<void>;
-  };
-  binary: {
-    check: () => Promise<{ found: boolean; path?: string }>;
-    recheck: () => Promise<{ found: boolean; path?: string }>;
-  };
-  dialog: {
-    openDirectory: () => Promise<string | null>;
-  };
-  job: {
-    create: (params: JobCreateParams) => Promise<Job>;
-    stop: (jobId: string) => Promise<void>;
-    archive: (jobId: string) => Promise<void>; // failed/stopped only
-    unarchive: (jobId: string) => Promise<void>; // failed/stopped only; not for completed
-    listActive: () => Promise<Job[]>; // archivedAt === null
-    listArchive: () => Promise<Job[]>; // archivedAt !== null
-    deleteWorktree: (
-      jobId: string,
-    ) => Promise<{ success: boolean; hasUncommittedChanges?: boolean; error?: string }>;
-    deleteWorktreeForce: (jobId: string) => Promise<{ success: boolean; error?: string }>;
-    getLog: (jobId: string) => Promise<string>;
-  };
-  permission: {
-    respond: (params: {
-      jobId: string;
-      permissionId: string;
-      response: 'once' | 'always' | 'reject';
-    }) => Promise<void>;
-  };
-  message: {
-    send: (params: { jobId: string; text: string }) => Promise<void>;
-  };
-  session: {
-    messages: (params: { jobId: string; sessionId: string }) => Promise<SessionMessage[]>;
-  };
-  branch: {
-    validate: (params: {
-      repoPath: string;
-      branchName: string;
-      activeJobIds: string[];
-    }) => Promise<{ valid: boolean; error?: string }>;
-    preview: (params: {
-      argument: string;
-      workflowName: string;
-      githubHandle: string;
-    }) => Promise<string>;
-  };
-  repo: {
-    listBranches: (repoPath: string) => Promise<string[]>;
-    // Sorted unique local + remote branch names; used for base-branch dropdown
-  };
-  onboarding: {
-    isComplete: () => Promise<boolean>;
-    complete: (params: { workspaceFolder: string; githubHandle: string }) => Promise<void>;
-  };
-
-  // Subscribe (main → renderer, returns unsubscribe function)
-  onJobCreated: (cb: (job: Job) => void) => () => void;
-  onJobUpdated: (cb: (job: Job) => void) => () => void;
-  // onJobArchived removed — archive state derived from job.archivedAt in onJobUpdated
-  onSseEvent: (cb: (params: { jobId: string; event: unknown }) => void) => () => void;
-  onSseOrchestratorEvent: (
-    cb: (params: { jobId: string; event: OrchestratorEvent }) => void,
-  ) => () => void;
-  onBinaryStatus: (cb: (params: { found: boolean }) => void) => () => void;
-  onWorkspaceUpdated: (cb: (repos: Repo[]) => void) => () => void;
-  onNavigateJob: (cb: (jobId: string) => void) => () => void;
-  onNavigateSettings: (cb: () => void) => () => void; // Settings gear / Cmd+, → show Settings panel
-};
-
-declare global {
-  interface Window {
-    api: ElectronAPI;
-  }
-}
-```
+channel strings appear in renderer code. The full `ElectronAPI` type and `declare global`
+block are defined in `src/shared/types/ipc.ts` — read that file directly for the current
+shape.
 
 ## Renderer state management (Zustand)
 
 The renderer uses **Zustand** for global state. One store (`src/renderer/src/store.ts`) holds
-all shared state and is the single subscriber to IPC push events from main.
-
-```ts
-type AppStore = {
-  // Repos
-  repos: Repo[];
-  setRepos: (repos: Repo[]) => void;
-
-  // Jobs — single map; active/archived derived from archivedAt field
-  jobs: Record<string, Job>;
-  upsertJob: (job: Job) => void;
-  // Derived selectors (not stored — computed from jobs map):
-  // activeJobs  = Object.values(jobs).filter(j => j.archivedAt === null)
-  // archivedJobs = Object.values(jobs).filter(j => j.archivedAt !== null)
-
-  // UI state
-  selectedJobId: string | null;
-  selectJob: (jobId: string | null) => void;
-  activeTab: 'dashboard' | 'archive';
-  setActiveTab: (tab: 'dashboard' | 'archive') => void;
-  showSettings: boolean; // true when Settings panel is visible
-  setShowSettings: (show: boolean) => void;
-
-  // Binary check
-  binaryFound: boolean | null; // null = not yet checked
-  setBinaryFound: (found: boolean) => void;
-};
-```
+all shared state and is the single subscriber to IPC push events from main. Read
+`src/renderer/src/store.ts` directly for the current `AppStore` shape.
 
 IPC listeners are registered **once** in `App.tsx` (or a top-level `useEffect`) and call Zustand
-setters:
-
-```ts
-// All job state changes come through job:updated — a single upsertJob handles everything.
-// Active vs archived is derived from job.archivedAt, not from separate IPC channels.
-window.api.onJobCreated((job) => useAppStore.getState().upsertJob(job));
-window.api.onJobUpdated((job) => useAppStore.getState().upsertJob(job));
-window.api.onWorkspaceUpdated((repos) => useAppStore.getState().setRepos(repos));
-window.api.onBinaryStatus(({ found }) => useAppStore.getState().setBinaryFound(found));
-window.api.onNavigateJob((jobId) => {
-  useAppStore.getState().setShowSettings(false);
-  useAppStore.getState().setActiveTab('dashboard');
-  useAppStore.getState().selectJob(jobId);
-});
-window.api.onNavigateSettings(() => {
-  useAppStore.getState().setShowSettings(true);
-});
-// SSE events are subscribed per-job in the ChatThread component via onSseEvent,
-// not in the global Zustand wiring.
-```
+setters. All job state changes come through `job:updated` — a single `upsertJob` handles
+everything. Active vs archived is derived from `job.archivedAt`, not separate IPC channels.

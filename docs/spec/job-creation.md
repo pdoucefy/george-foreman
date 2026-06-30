@@ -92,7 +92,9 @@ All keyword matches are case-insensitive.
 ### Branch name constraints
 
 - Editable by user at step 4 before any worktree is created
-- **Permanent** after confirmation — never renamed by app or orchestrator
+- **Permanent** after confirmation — neither the branch name nor the worktree directory can
+  ever be renamed. `git worktree add` fixes the directory path at creation time; git provides
+  no rename operation. The app must never attempt to rename either.
 - Must be unique across **active jobs only** (`running`, `needs_attention`, `pending`)
   - Archived/completed/failed/stopped jobs do not block reuse of a branch name
 - Validated against `/^[a-zA-Z0-9._\-\/]+$/` (valid git ref characters)
