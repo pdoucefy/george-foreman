@@ -49,7 +49,7 @@ const Content = styled(RadixSelect.Content)`
   border-radius: ${({ theme }) => theme.radius.md};
   box-shadow: ${({ theme }) => theme.shadow.md};
   overflow: hidden;
-  z-index: 100;
+  z-index: 300;
   min-width: var(--radix-select-trigger-width);
 `;
 

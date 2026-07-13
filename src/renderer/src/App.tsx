@@ -1,12 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { ThemeProvider } from 'styled-components';
+import styled, { ThemeProvider } from 'styled-components';
 
 import { GlobalStyle } from './GlobalStyle.ts';
+import { JobCreation } from './components/JobCreation/index.tsx';
 import { Onboarding } from './components/Onboarding/index.tsx';
 import { Banner } from './components/ui/Banner.tsx';
+import { Button } from './components/ui/Button.tsx';
 import { Spinner } from './components/ui/Spinner.tsx';
 import { useAppStore } from './store.ts';
-import { theme } from './theme.ts';
+import { theme as appTheme } from './theme.ts';
+
+// Temporary shell until DashboardTab is built in M17
+const AppShell = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+`;
+
+const ShellToolbar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: ${({ theme }) => theme.space[3]} ${({ theme }) => theme.space[4]};
+  border-bottom: 1px solid ${({ theme }) => theme.border.subtle};
+`;
 
 // App shell: routes between Onboarding (first launch) and main UI.
 
@@ -14,6 +31,7 @@ type AppStatus = 'loading' | 'onboarding' | 'ready';
 
 export const App = (): React.JSX.Element => {
   const [status, setStatus] = useState<AppStatus>('loading');
+  const [showJobCreation, setShowJobCreation] = useState(false);
   const binaryFound = useAppStore((s) => s.binaryFound);
   const setBinaryFound = useAppStore((s) => s.setBinaryFound);
   const setShowSettings = useAppStore((s) => s.setShowSettings);
@@ -64,15 +82,21 @@ export const App = (): React.JSX.Element => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={appTheme}>
       <GlobalStyle />
       {status === 'loading' && <Spinner aria-label="Loading" />}
       {status === 'onboarding' && <Onboarding onDone={handleOnboardingDone} />}
       {status === 'ready' && (
-        <>
+        <AppShell>
           <Banner binaryFound={binaryFound} />
-          {/* Main shell — DashboardTab / ArchiveTab / Settings wired in M17+ */}
-        </>
+          <ShellToolbar>
+            {/* Temporary entry point — replaced by DashboardTab toolbar in M17 */}
+            <Button variant="primary" onClick={() => setShowJobCreation(true)}>
+              New Job
+            </Button>
+          </ShellToolbar>
+          {showJobCreation && <JobCreation onClose={() => setShowJobCreation(false)} />}
+        </AppShell>
       )}
     </ThemeProvider>
   );

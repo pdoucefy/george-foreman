@@ -52,8 +52,10 @@ the orchestrator session ID for a subagent permission returns 404.
 
 ## `window.api` is partially wired until M16
 
-Only the M8 channels (`onboarding`, `binary`, `dialog`) are exposed via `contextBridge` until
-M16 completes the full bridge. The remaining push subscriptions (`onJobCreated`, `onJobUpdated`,
-`onWorkspaceUpdated`, `onNavigateJob`, `onSseEvent`, `onSseOrchestratorEvent`) are stub no-ops
-that return `() => {}`. Calling any other `window.api` method (e.g. `job.create`) before M16
-will fail at runtime. Do not call unimplemented channels from renderer code before M16.
+M14 added `workflow`, `branch`, `repo`, and `job` to the preload. The following channels are
+fully functional (backed by IPC handlers): `workflow:list`, `branch:validate`, `branch:preview`,
+`repo:listBranches`. The `job.*` stubs (all except the no-op `listActive`) and `settings.*`
+return empty/default values until their handlers are wired in M15/M16.
+The remaining push subscriptions (`onJobCreated`, `onJobUpdated`, `onNavigateJob`, `onSseEvent`,
+`onSseOrchestratorEvent`) are stub no-ops that return `() => {}`. Do not rely on unimplemented
+channels before their respective milestones.
