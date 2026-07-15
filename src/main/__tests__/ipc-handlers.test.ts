@@ -140,6 +140,23 @@ const getHandler = (channel: string): ((...args: unknown[]) => unknown) => {
 const makeFakeWindow = (): BrowserWindow =>
   ({ webContents: { send: mockSend } }) as unknown as BrowserWindow;
 
+// Minimal stub JobManager for ipc-handlers tests (job channels not under test here)
+const makeStubJobManager = () => ({
+  restoreOnStartup: vi.fn().mockResolvedValue(undefined),
+  createJob: vi.fn().mockResolvedValue({}),
+  stopJob: vi.fn().mockResolvedValue(undefined),
+  archiveJob: vi.fn().mockResolvedValue(undefined),
+  unarchiveJob: vi.fn().mockResolvedValue(undefined),
+  listActive: vi.fn().mockReturnValue([]),
+  listArchive: vi.fn().mockReturnValue([]),
+  deleteWorktree: vi.fn().mockResolvedValue({ success: true }),
+  deleteWorktreeForce: vi.fn().mockResolvedValue({ success: true }),
+  getLog: vi.fn().mockResolvedValue(''),
+  respondPermission: vi.fn().mockResolvedValue(undefined),
+  sendMessage: vi.fn().mockResolvedValue(undefined),
+  getSessionMessages: vi.fn().mockResolvedValue([]),
+});
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -160,7 +177,7 @@ describe('registerIpcHandlers', () => {
       jobLogs: {},
     };
     mockLoadWorkflows.mockResolvedValue([]);
-    registerIpcHandlers(makeFakeWindow());
+    registerIpcHandlers(makeFakeWindow(), makeStubJobManager());
   });
 
   describe('onboarding:is-complete', () => {
@@ -316,7 +333,7 @@ describe('registerIpcHandlers', () => {
     it('does not register dev:clear-store when is.dev is false', () => {
       vi.clearAllMocks();
       mockIsDev.dev = false;
-      registerIpcHandlers(makeFakeWindow());
+      registerIpcHandlers(makeFakeWindow(), makeStubJobManager());
       expect(() => getHandler('dev:clear-store')).toThrow(
         'No handler registered for channel: dev:clear-store',
       );

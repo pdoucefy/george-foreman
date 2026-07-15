@@ -5,6 +5,7 @@ import { join } from 'path';
 
 import { checkOpenCodeBinary } from './binary-check.ts';
 import { registerIpcHandlers } from './ipc-handlers.ts';
+import { createJobManager } from './job-manager.ts';
 import { storeGet, storeSet } from './store.ts';
 import { shouldAllowNewInstance, shouldHideOnClose } from './window.ts';
 import { scanWorkspace } from './workspace.ts';
@@ -141,11 +142,13 @@ if (shouldAllowNewInstance(hasLock) === 'quit') {
     createWindow();
 
     if (mainWindow) {
-      registerIpcHandlers(mainWindow);
+      const jobManager = createJobManager(mainWindow);
+      registerIpcHandlers(mainWindow, jobManager);
       // Run startup checks after the renderer is ready to receive IPC pushes
       mainWindow.webContents.once('did-finish-load', () => {
         if (mainWindow) {
           runStartupChecks(mainWindow).catch(console.error);
+          jobManager.restoreOnStartup().catch(console.error);
         }
       });
     }

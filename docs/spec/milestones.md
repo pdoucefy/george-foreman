@@ -34,7 +34,7 @@ Implement in this order.
 - [x] **M14.** Job creation flow — UI only (steps 1–4):
       repo select, workflow select, argument input,
       branch name preview + confirm + advanced base-branch selector
-- [ ] **M15.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from [Job Creation Flow](./job-creation.md#job-creation-flow)), crash handling, startup restore + auto-resume
+- [x] **M15.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from [Job Creation Flow](./job-creation.md#job-creation-flow)), crash handling, startup restore + auto-resume
   - **M4 store verification:** after a job reaches `running`, quit and relaunch the app — confirm the job reappears with its previous status and task state. This proves the store correctly persisted and restored the job record.
 - [ ] **M16.** IPC bridge (`src/shared/ipc.ts`, `src/shared/types.ts`, `src/preload/index.ts`): all channels, fully typed `window.api` object; Zustand store skeleton (`src/renderer/src/store.ts`)
 - [ ] **M17.** `DashboardTab` + `Layout`: repo grouping, job cards (status pill, progress bar, elapsed time), split-panel shell, session panel skeleton

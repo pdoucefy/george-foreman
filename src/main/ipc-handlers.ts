@@ -3,14 +3,16 @@ import { is } from '@electron-toolkit/utils';
 import type { BrowserWindow } from 'electron';
 import { dialog, ipcMain } from 'electron';
 
+import { schJobCreateParams } from '../shared/types/job.ts';
 import { checkOpenCodeBinary } from './binary-check.ts';
+import type { JobManager } from './job-manager.ts';
 import { store, storeGet, storeSet } from './store.ts';
 import { loadWorkflows } from './workflow-loader.ts';
 import { scanWorkspace } from './workspace.ts';
 import { listBranches, previewBranchName } from './worktree.ts';
 
-// IPC handlers: onboarding, binary check, dialog, workspace scan, workflow list.
-// Full window.api bridge is completed in M16.
+// IPC handlers: onboarding, binary check, dialog, workspace scan, workflow list,
+// and full job/permission/message channels (M15).
 
 const runBinaryCheck = async (
   mainWindow: BrowserWindow,
@@ -26,7 +28,7 @@ const runWorkspaceScan = async (mainWindow: BrowserWindow, workspaceFolder: stri
   return repos;
 };
 
-export const registerIpcHandlers = (mainWindow: BrowserWindow): void => {
+export const registerIpcHandlers = (mainWindow: BrowserWindow, jobManager: JobManager): void => {
   // -------------------------------------------------------------------------
   // Onboarding
   // -------------------------------------------------------------------------
@@ -146,6 +148,81 @@ export const registerIpcHandlers = (mainWindow: BrowserWindow): void => {
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
   });
+
+  // -------------------------------------------------------------------------
+  // Job management (M15)
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('job:create', async (_event, params: unknown) => {
+    const parsed = schJobCreateParams.parse(params);
+    return jobManager.createJob(parsed);
+  });
+
+  ipcMain.handle('job:stop', async (_event, jobId: string) => {
+    await jobManager.stopJob(jobId);
+  });
+
+  ipcMain.handle('job:archive', async (_event, jobId: string) => {
+    await jobManager.archiveJob(jobId);
+  });
+
+  ipcMain.handle('job:unarchive', async (_event, jobId: string) => {
+    await jobManager.unarchiveJob(jobId);
+  });
+
+  ipcMain.handle('job:list-active', () => jobManager.listActive());
+
+  ipcMain.handle('job:list-archive', () => jobManager.listArchive());
+
+  ipcMain.handle('job:delete-worktree', (_event, jobId: string) =>
+    jobManager.deleteWorktree(jobId),
+  );
+
+  ipcMain.handle('job:delete-worktree-force', (_event, jobId: string) =>
+    jobManager.deleteWorktreeForce(jobId),
+  );
+
+  ipcMain.handle('job:get-log', (_event, jobId: string) => jobManager.getLog(jobId));
+
+  // -------------------------------------------------------------------------
+  // Permission (M15)
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle(
+    'permission:respond',
+    async (
+      _event,
+      params: { jobId: string; permissionId: string; response: 'once' | 'always' | 'reject' },
+    ) => {
+      await jobManager.respondPermission(params);
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // Message / Session (M15)
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('message:send', async (_event, params: { jobId: string; text: string }) => {
+    await jobManager.sendMessage(params);
+  });
+
+  ipcMain.handle('session:messages', (_event, params: { jobId: string; sessionId: string }) =>
+    jobManager.getSessionMessages(params),
+  );
+
+  // -------------------------------------------------------------------------
+  // Settings (handlers wired in M16; stub — reads from store)
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('settings:get', () => storeGet('config'));
+
+  ipcMain.handle(
+    'settings:set',
+    async (_event, partial: Partial<ReturnType<typeof storeGet<'config'>>>) => {
+      const current = storeGet('config');
+      storeSet('config', { ...current, ...partial });
+    },
+  );
 
   // -------------------------------------------------------------------------
   // Dev-only helpers

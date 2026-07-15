@@ -28,6 +28,7 @@ export type JobStatus = z.infer<typeof schJobStatus>;
 
 export const schPendingPermission = z.object({
   permissionId: z.string(),
+  sessionId: z.string(), // sessionID from the permission event (may be a subagent session)
   description: z.string(), // Human-readable (from Permission.title)
   permissionType: z.string(), // e.g. 'bash', 'edit', 'webfetch'
   pattern: z.union([z.string(), z.array(z.string())]).optional(),

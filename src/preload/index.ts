@@ -9,11 +9,14 @@ import type { IpcRendererEvent } from 'electron';
 // Use process.env.NODE_ENV instead (set by electron-vite during dev).
 const isDev = process.env.NODE_ENV === 'development';
 
-// Partial window.api bridge (onboarding, binary, dialog, workspace, workflow,
-// branch, repo channels). Full bridge completed in M16.
+// window.api bridge: onboarding, binary, dialog, workspace, workflow, branch, repo (M8+M9+M14),
+// and full job/permission/message/session channels (M15).
+// settings.* handlers present but backed by store (full Zustand integration in M16).
 
-const noop = (): void => {
-  // stub — replaced in M16
+const makePushSubscription = <T>(channel: string, cb: (value: T) => void): (() => void) => {
+  const handler = (_event: IpcRendererEvent, value: T): void => cb(value);
+  ipcRenderer.on(channel, handler);
+  return () => ipcRenderer.removeListener(channel, handler);
 };
 
 const api: ElectronAPI = {
@@ -56,7 +59,7 @@ const api: ElectronAPI = {
   },
 
   // -------------------------------------------------------------------------
-  // Settings (handlers wired in M16; stubs return sensible defaults)
+  // Settings (backed by store; full Zustand integration in M16)
   // -------------------------------------------------------------------------
   settings: {
     get: (): Promise<{
@@ -65,15 +68,8 @@ const api: ElectronAPI = {
       userWorkflowsFolder: string | null;
       defaultCopyGlobs: string;
       windowBounds: null;
-    }> =>
-      Promise.resolve({
-        workspaceFolder: '',
-        githubHandle: '',
-        userWorkflowsFolder: null,
-        defaultCopyGlobs: '',
-        windowBounds: null,
-      }),
-    set: (_partial: unknown): Promise<void> => Promise.resolve(),
+    }> => ipcRenderer.invoke('settings:get'),
+    set: (partial: unknown): Promise<void> => ipcRenderer.invoke('settings:set', partial),
   },
 
   // -------------------------------------------------------------------------
@@ -92,53 +88,49 @@ const api: ElectronAPI = {
   },
 
   // -------------------------------------------------------------------------
-  // Job (creation handlers wired in M15; stubs return sensible defaults)
+  // Job management (M15)
   // -------------------------------------------------------------------------
   job: {
-    create: (_params: JobCreateParams): Promise<Job> =>
-      Promise.reject(new Error('job.create not yet implemented — wired in M15')),
-    stop: (_jobId: string): Promise<void> => Promise.resolve(),
-    archive: (_jobId: string): Promise<void> => Promise.resolve(),
-    unarchive: (_jobId: string): Promise<void> => Promise.resolve(),
-    listActive: (): Promise<Job[]> => Promise.resolve([]),
-    listArchive: (): Promise<Job[]> => Promise.resolve([]),
-    deleteWorktree: (_jobId: string) =>
-      Promise.resolve({ success: false as const, error: 'not implemented' }),
-    deleteWorktreeForce: (_jobId: string) =>
-      Promise.resolve({ success: false as const, error: 'not implemented' }),
-    getLog: (_jobId: string): Promise<string> => Promise.resolve(''),
+    create: (params: JobCreateParams): Promise<Job> => ipcRenderer.invoke('job:create', params),
+    stop: (jobId: string): Promise<void> => ipcRenderer.invoke('job:stop', jobId),
+    archive: (jobId: string): Promise<void> => ipcRenderer.invoke('job:archive', jobId),
+    unarchive: (jobId: string): Promise<void> => ipcRenderer.invoke('job:unarchive', jobId),
+    listActive: (): Promise<Job[]> => ipcRenderer.invoke('job:list-active'),
+    listArchive: (): Promise<Job[]> => ipcRenderer.invoke('job:list-archive'),
+    deleteWorktree: (jobId: string) => ipcRenderer.invoke('job:delete-worktree', jobId),
+    deleteWorktreeForce: (jobId: string) => ipcRenderer.invoke('job:delete-worktree-force', jobId),
+    getLog: (jobId: string): Promise<string> => ipcRenderer.invoke('job:get-log', jobId),
   },
 
   // -------------------------------------------------------------------------
-  // Permission (wired in M16)
+  // Permission (M15)
   // -------------------------------------------------------------------------
   permission: {
-    respond: (_params: {
+    respond: (params: {
       jobId: string;
       permissionId: string;
       response: 'once' | 'always' | 'reject';
-    }): Promise<void> => Promise.resolve(),
+    }): Promise<void> => ipcRenderer.invoke('permission:respond', params),
   },
 
   // -------------------------------------------------------------------------
-  // Message / Session (wired in M16)
+  // Message / Session (M15)
   // -------------------------------------------------------------------------
   message: {
-    send: (_params: { jobId: string; text: string }): Promise<void> => Promise.resolve(),
+    send: (params: { jobId: string; text: string }): Promise<void> =>
+      ipcRenderer.invoke('message:send', params),
   },
 
   session: {
-    messages: (_params: { jobId: string; sessionId: string }) => Promise.resolve([]),
+    messages: (params: { jobId: string; sessionId: string }) =>
+      ipcRenderer.invoke('session:messages', params),
   },
 
   // -------------------------------------------------------------------------
   // Push subscriptions (main → renderer)
   // -------------------------------------------------------------------------
-  onBinaryStatus: (cb: (params: { found: boolean }) => void): (() => void) => {
-    const handler = (_event: IpcRendererEvent, params: { found: boolean }): void => cb(params);
-    ipcRenderer.on('binary:status', handler);
-    return () => ipcRenderer.removeListener('binary:status', handler);
-  },
+  onBinaryStatus: (cb: (params: { found: boolean }) => void): (() => void) =>
+    makePushSubscription('binary:status', cb),
 
   onNavigateSettings: (cb: () => void): (() => void) => {
     const handler = (): void => cb();
@@ -146,20 +138,22 @@ const api: ElectronAPI = {
     return () => ipcRenderer.removeListener('navigate:settings', handler);
   },
 
-  // Stub subscriptions for channels not yet implemented — return a no-op unsubscribe.
-  // These will be replaced in M16 with real handlers.
-  onJobCreated: (_cb: (job: Job) => void): (() => void) => noop,
-  onJobUpdated: (_cb: (job: Job) => void): (() => void) => noop,
-  onSseEvent: (_cb: (params: { jobId: string; event: unknown }) => void): (() => void) => noop,
+  onJobCreated: (cb: (job: Job) => void): (() => void) => makePushSubscription('job:created', cb),
+
+  onJobUpdated: (cb: (job: Job) => void): (() => void) => makePushSubscription('job:updated', cb),
+
+  onSseEvent: (cb: (params: { jobId: string; event: unknown }) => void): (() => void) =>
+    makePushSubscription('sse:event', cb),
+
   onSseOrchestratorEvent: (
-    _cb: (params: { jobId: string; event: OrchestratorEvent }) => void,
-  ): (() => void) => noop,
-  onWorkspaceUpdated: (cb: (repos: Repo[]) => void): (() => void) => {
-    const handler = (_event: IpcRendererEvent, repos: Repo[]): void => cb(repos);
-    ipcRenderer.on('workspace:updated', handler);
-    return () => ipcRenderer.removeListener('workspace:updated', handler);
-  },
-  onNavigateJob: (_cb: (jobId: string) => void): (() => void) => noop,
+    cb: (params: { jobId: string; event: OrchestratorEvent }) => void,
+  ): (() => void) => makePushSubscription('sse:orchestrator-event', cb),
+
+  onWorkspaceUpdated: (cb: (repos: Repo[]) => void): (() => void) =>
+    makePushSubscription('workspace:updated', cb),
+
+  onNavigateJob: (cb: (jobId: string) => void): (() => void) =>
+    makePushSubscription('navigate:job', cb),
 
   // Dev-only helpers — only present when is.dev === true
   ...(isDev && {

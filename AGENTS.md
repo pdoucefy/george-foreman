@@ -46,7 +46,9 @@ See [`docs/spec/gotchas.md`](./docs/spec/gotchas.md) for the full list.
 
 ## IPC architecture
 
-`src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` exposes a **partial** `window.api` via `contextBridge` — M8+M9 channels (`onboarding`, `binary`, `dialog`, `workspace`, plus push subscriptions `onBinaryStatus`, `onNavigateSettings`, and `onWorkspaceUpdated`). The remaining channels are stub no-ops returning `() => {}`. The full bridge is completed in M16.
+`src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` exposes the full `window.api` via `contextBridge`.
+
+**Remaining for M16:** Zustand store skeleton (`src/renderer/src/store.ts`); `settings.*` full integration.
 
 Renderer code must only use `window.api` — never raw `ipcRenderer`.
 
