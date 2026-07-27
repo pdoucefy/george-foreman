@@ -1,5 +1,12 @@
 import { electronAPI } from '@electron-toolkit/preload';
-import type { ElectronAPI, Job, JobCreateParams, OrchestratorEvent, Repo } from '@shared/types';
+import type {
+  Config,
+  ElectronAPI,
+  Job,
+  JobCreateParams,
+  OrchestratorEvent,
+  Repo,
+} from '@shared/types';
 
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
@@ -62,14 +69,8 @@ const api: ElectronAPI = {
   // Settings (backed by store; full Zustand integration in M16)
   // -------------------------------------------------------------------------
   settings: {
-    get: (): Promise<{
-      workspaceFolder: string;
-      githubHandle: string;
-      userWorkflowsFolder: string | null;
-      defaultCopyGlobs: string;
-      windowBounds: null;
-    }> => ipcRenderer.invoke('settings:get'),
-    set: (partial: unknown): Promise<void> => ipcRenderer.invoke('settings:set', partial),
+    get: (): Promise<Config> => ipcRenderer.invoke('settings:get'),
+    set: (partial: Partial<Config>): Promise<void> => ipcRenderer.invoke('settings:set', partial),
   },
 
   // -------------------------------------------------------------------------
@@ -84,7 +85,7 @@ const api: ElectronAPI = {
 
   repo: {
     listBranches: (repoPath: string): Promise<string[]> =>
-      ipcRenderer.invoke('repo:listBranches', repoPath),
+      ipcRenderer.invoke('repo:list-branches', repoPath),
   },
 
   // -------------------------------------------------------------------------
@@ -132,11 +133,8 @@ const api: ElectronAPI = {
   onBinaryStatus: (cb: (params: { found: boolean }) => void): (() => void) =>
     makePushSubscription('binary:status', cb),
 
-  onNavigateSettings: (cb: () => void): (() => void) => {
-    const handler = (): void => cb();
-    ipcRenderer.on('navigate:settings', handler);
-    return () => ipcRenderer.removeListener('navigate:settings', handler);
-  },
+  onNavigateSettings: (cb: () => void): (() => void) =>
+    makePushSubscription<undefined>('navigate:settings', () => cb()),
 
   onJobCreated: (cb: (job: Job) => void): (() => void) => makePushSubscription('job:created', cb),
 

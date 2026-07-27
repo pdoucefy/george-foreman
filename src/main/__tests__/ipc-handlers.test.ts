@@ -494,11 +494,11 @@ describe('registerIpcHandlers', () => {
     });
   });
 
-  describe('repo:listBranches', () => {
+  describe('repo:list-branches', () => {
     it('calls listBranches with repoPath and returns the result', async () => {
       mockListBranches.mockResolvedValue(['main', 'feature-a']);
 
-      const handler = getHandler('repo:listBranches');
+      const handler = getHandler('repo:list-branches');
       const result = await handler({}, '/repos/my-app');
 
       expect(mockListBranches).toHaveBeenCalledWith('/repos/my-app');

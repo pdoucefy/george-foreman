@@ -1,6 +1,6 @@
 # IPC Contract
 
-Defined in `src/shared/ipc.ts`. Implemented in `src/preload/index.ts` via `contextBridge`.
+Defined in `src/shared/types/ipc.ts`. Implemented in `src/preload/index.ts` via `contextBridge`.
 
 ## Conventions
 

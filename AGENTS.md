@@ -48,8 +48,6 @@ See [`docs/spec/gotchas.md`](./docs/spec/gotchas.md) for the full list.
 
 `src/shared/types/ipc.ts` declares `ElectronAPI` (the shape of `window.api`) and the global `Window` declaration. `src/preload/index.ts` exposes the full `window.api` via `contextBridge`.
 
-**Remaining for M16:** Zustand store skeleton (`src/renderer/src/store.ts`); `settings.*` full integration.
-
 Renderer code must only use `window.api` — never raw `ipcRenderer`.
 
 IPC channel naming convention: `<domain>:<action>` (e.g. `job:create`, `workspace:scan`, `binary:check`).

@@ -135,7 +135,7 @@ export const registerIpcHandlers = (mainWindow: BrowserWindow, jobManager: JobMa
   );
 
   ipcMain.handle(
-    'repo:listBranches',
+    'repo:list-branches',
     (_event, repoPath: string): Promise<string[]> => listBranches(repoPath),
   );
 

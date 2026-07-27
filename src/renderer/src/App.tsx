@@ -66,6 +66,12 @@ export const App = (): React.JSX.Element => {
       useAppStore.getState().setActiveTab('dashboard');
       useAppStore.getState().selectJob(jobId);
     });
+    const unsubSseEvent = window.api.onSseEvent(({ jobId, event }) => {
+      useAppStore.getState().appendSseEvent(jobId, event);
+    });
+    const unsubSseOrchestratorEvent = window.api.onSseOrchestratorEvent(({ jobId, event }) => {
+      useAppStore.getState().appendOrchestratorEvent(jobId, event);
+    });
 
     return () => {
       unsubBinary();
@@ -74,6 +80,8 @@ export const App = (): React.JSX.Element => {
       unsubJobUpdated();
       unsubWorkspace();
       unsubNavigateJob();
+      unsubSseEvent();
+      unsubSseOrchestratorEvent();
     };
   }, [setBinaryFound, setShowSettings]);
 

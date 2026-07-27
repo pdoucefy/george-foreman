@@ -1,4 +1,4 @@
-import type { Job, Repo } from '@shared/types';
+import type { Job, OrchestratorEvent, Repo } from '@shared/types';
 
 import { create } from 'zustand';
 
@@ -26,6 +26,14 @@ export type AppStore = {
   // Binary check
   binaryFound: boolean | null; // null = not yet checked
   setBinaryFound: (found: boolean) => void;
+
+  // SSE events per job (raw, for chat display)
+  sseEvents: Record<string, unknown[]>;
+  appendSseEvent: (jobId: string, event: unknown) => void;
+
+  // Structured orchestrator events per job
+  orchestratorEvents: Record<string, OrchestratorEvent[]>;
+  appendOrchestratorEvent: (jobId: string, event: OrchestratorEvent) => void;
 };
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -49,4 +57,22 @@ export const useAppStore = create<AppStore>((set) => ({
 
   binaryFound: null,
   setBinaryFound: (found) => set({ binaryFound: found }),
+
+  sseEvents: {},
+  appendSseEvent: (jobId, event) =>
+    set((state) => ({
+      sseEvents: {
+        ...state.sseEvents,
+        [jobId]: [...(state.sseEvents[jobId] ?? []), event],
+      },
+    })),
+
+  orchestratorEvents: {},
+  appendOrchestratorEvent: (jobId, event) =>
+    set((state) => ({
+      orchestratorEvents: {
+        ...state.orchestratorEvents,
+        [jobId]: [...(state.orchestratorEvents[jobId] ?? []), event],
+      },
+    })),
 }));
