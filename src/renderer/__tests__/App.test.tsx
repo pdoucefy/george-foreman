@@ -32,6 +32,10 @@ vi.stubGlobal('api', {
     recheck: vi.fn(),
   },
   dialog: { openDirectory: vi.fn() },
+  job: {
+    listActive: vi.fn(() => Promise.resolve([])),
+    listArchive: vi.fn(() => Promise.resolve([])),
+  },
   onBinaryStatus: mockOnBinaryStatus,
   onNavigateSettings: mockOnNavigateSettings,
   onJobCreated: mockOnJobCreated,

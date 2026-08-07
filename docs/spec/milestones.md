@@ -37,7 +37,7 @@ Implement in this order.
 - [x] **M15.** Job manager (`job-manager.ts`): state machine, full job creation orchestration (steps 4→10 from [Job Creation Flow](./job-creation.md#job-creation-flow)), crash handling, startup restore + auto-resume
   - **M4 store verification:** after a job reaches `running`, quit and relaunch the app — confirm the job reappears with its previous status and task state. This proves the store correctly persisted and restored the job record.
 - [x] **M16.** IPC bridge (`src/shared/ipc.ts`, `src/shared/types.ts`, `src/preload/index.ts`): all channels, fully typed `window.api` object; Zustand store skeleton (`src/renderer/src/store.ts`)
-- [ ] **M17.** `DashboardTab` + `Layout`: repo grouping, job cards (status pill, progress bar, elapsed time), split-panel shell, session panel skeleton
+- [x] **M17.** `DashboardTab` + `Layout`: repo grouping, job cards (status pill, progress bar, elapsed time), split-panel shell, session panel skeleton
 - [ ] **M18.** Session panel: two-column layout, task list with status icons + background tints, expandable subagent rows (lazy-load messages), chat thread (auto-scroll, scroll-lock)
 - [ ] **M19.** Input area: permission mode (3 buttons: Reject / Allow Once / Allow Always) + persistent free-text input (always shown when running; "Waiting for your input…" hint on session.idle)
 - [ ] **M20.** Attention detection: Dock badge update + macOS notifications (isFocused gate) + notification click → navigate to job
